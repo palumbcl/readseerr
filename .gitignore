@@ -34,3 +34,6 @@ prisma/*.db-journal
 # IDE
 .vscode/
 .idea/
+
+
+docker-compose.dev.yaml
