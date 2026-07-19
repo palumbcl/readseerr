@@ -34,6 +34,9 @@ ENV NODE_ENV=production
 ENV HOSTNAME="0.0.0.0"
 ENV PORT=3000
 
+# 1. Installation globale de Prisma pour éviter tout conflit avec le mode standalone
+RUN npm install -g prisma@6.9.0
+
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
@@ -43,13 +46,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Prisma engines for runtime (Next.js standalone workaround)
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-
-# Install full Prisma CLI properly for migrations
-RUN npm install prisma@^6.9.0
+# Copy Prisma schema and migrations
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 # Create data directory for SQLite
 RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
@@ -59,5 +57,5 @@ VOLUME ["/app/data"]
 USER nextjs
 EXPOSE 3000
 
-# Run Prisma migrations then start the app
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=./prisma/schema.prisma && node server.js"]
+# 2. Utilisation de la commande globale prisma (sans npx) pour lancer la migration
+CMD ["sh", "-c", "prisma migrate deploy --schema=./prisma/schema.prisma && node server.js"]
