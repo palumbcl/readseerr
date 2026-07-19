@@ -57,5 +57,5 @@ VOLUME ["/app/data"]
 USER nextjs
 EXPOSE 3000
 
-# Run Prisma migrations then start the app
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=./prisma/schema.prisma 2>/dev/null; node server.js"]
+# Run Prisma migrations using the direct node path, then start the app
+CMD ["sh", "-c", "node ./node_modules/prisma/build/index.js migrate deploy && node server.js"]
