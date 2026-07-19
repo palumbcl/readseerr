@@ -11,11 +11,13 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=file:/app/data/readseerr.db
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://192.168.1.37:3000}
       - COMICVINE_API_KEY=${COMICVINE_API_KEY}
-      - KAIZOKU_URL=${KAIZOKU_URL:-http://kaizoku:3000}
-      - MYLAR_URL=${MYLAR_URL:-http://mylar3:8090}
-      - MYLAR_API_KEY=${MYLAR_API_KEY}
+      # Configuration de tes emails (Nodemailer)
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
     networks:
       - media-stack
 
