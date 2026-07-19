@@ -8,7 +8,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "ReadSeerr — Demandes de lecture",
+  title: "ReadSeerr",
   description: "Interface unifiée pour demander des mangas, comics et BD franco-belges. Intégré avec Kaizoku et Mylar3.",
   manifest: "/manifest.json",
   appleWebApp: {

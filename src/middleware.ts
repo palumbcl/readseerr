@@ -4,9 +4,13 @@ import { NextResponse } from "next/server";
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  // Public routes that don't require authentication
-  const publicRoutes = ["/login", "/register", "/api/auth", "/api/register", "/api/webhooks"];
-  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
+  // Routes publiques (exact match pour les pages, startsWith pour les API)
+  const exactPublicRoutes = ["/login", "/register"];
+  const publicApiRoutes = ["/api/auth", "/api/register", "/api/webhooks"];
+  
+  const isPublicRoute = 
+    exactPublicRoutes.includes(pathname) || 
+    publicApiRoutes.some((route) => pathname.startsWith(route));
 
   // Static assets and Next.js internals
   const isAsset =
@@ -25,6 +29,11 @@ export default auth((req) => {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Si l'utilisateur est connecté et essaie d'aller sur /login ou /register, on le redirige vers l'accueil
+  if (req.auth && exactPublicRoutes.includes(pathname)) {
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   return NextResponse.next();
