@@ -1,0 +1,28 @@
+services:
+  readseerr:
+    build: .
+    container_name: readseerr
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - readseerr-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/data/readseerr.db
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - COMICVINE_API_KEY=${COMICVINE_API_KEY}
+      - KAIZOKU_URL=${KAIZOKU_URL:-http://kaizoku:3000}
+      - MYLAR_URL=${MYLAR_URL:-http://mylar3:8090}
+      - MYLAR_API_KEY=${MYLAR_API_KEY}
+    networks:
+      - media-stack
+
+volumes:
+  readseerr-data:
+    driver: local
+
+networks:
+  media-stack:
+    external: true
