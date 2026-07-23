@@ -1,190 +1,69 @@
 "use client";
 
-import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import LoadingSpinner from "./LoadingSpinner";
 
-interface AuthFormProps {
-  mode: "login" | "register";
-}
-
-export default function AuthForm({ mode }: AuthFormProps) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
+export default function AuthForm() {
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+  const handleSignIn = () => {
     setLoading(true);
-
-    try {
-      if (mode === "register") {
-        if (password !== confirmPassword) {
-          setError("Les mots de passe ne correspondent pas.");
-          setLoading(false);
-          return;
-        }
-
-        // Register
-        const res = await fetch("/api/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, password }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || "Erreur lors de l'inscription.");
-          setLoading(false);
-          return;
-        }
-
-        // Auto-login after registration
-        const loginResult = await signIn("credentials", {
-          email,
-          password,
-          redirect: false,
-        });
-
-        if (loginResult?.error) {
-          setError("Compte créé, mais erreur de connexion. Essayez de vous connecter.");
-          setLoading(false);
-          return;
-        }
-
-        router.push("/");
-        router.refresh();
-      } else {
-        // Login
-        const result = await signIn("credentials", {
-          email,
-          password,
-          redirect: false,
-        });
-
-        if (result?.error) {
-          setError("Email ou mot de passe incorrect.");
-          setLoading(false);
-          return;
-        }
-
-        router.push("/");
-        router.refresh();
-      }
-    } catch {
-      setError("Erreur réseau. Vérifiez votre connexion.");
-      setLoading(false);
-    }
+    signIn("authelia", { callbackUrl: "/" });
   };
 
   return (
     <div className="auth-card">
-      <h1 className="auth-title">
-        {mode === "login" ? "Connexion" : "Inscription"}
-      </h1>
+      <div className="auth-sso-icon">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <rect width="48" height="48" rx="14" fill="url(#sso-grad)" />
+          <defs>
+            <linearGradient id="sso-grad" x1="0" y1="0" x2="48" y2="48">
+              <stop offset="0%" stopColor="#6366f1" />
+              <stop offset="100%" stopColor="#a855f7" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M24 14a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm0 10c-4.42 0-8 2.24-8 5v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1c0-2.76-3.58-5-8-5Z"
+            fill="white"
+            opacity="0.9"
+          />
+          <path
+            d="M33 20h-2v-2a1 1 0 0 0-2 0v2h-2a1 1 0 0 0 0 2h2v2a1 1 0 0 0 2 0v-2h2a1 1 0 0 0 0-2Z"
+            fill="white"
+            opacity="0.7"
+          />
+        </svg>
+      </div>
+
+      <h1 className="auth-title">ReadSeerr</h1>
       <p className="auth-subtitle">
-        {mode === "login"
-          ? "Connectez-vous pour gérer vos demandes"
-          : "Créez un compte pour commencer"}
+        Connectez-vous via votre compte Authelia pour accéder à l&apos;application
       </p>
 
-      <form onSubmit={handleSubmit}>
-        {mode === "register" && (
-          <div className="form-group">
-            <label className="form-label" htmlFor="name">Nom</label>
-            <input
-              id="name"
-              type="text"
-              className="form-input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Votre nom"
-              required
-            />
-          </div>
-        )}
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            className="form-input"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="vous@exemple.com"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="password">Mot de passe</label>
-          <input
-            id="password"
-            type="password"
-            className="form-input"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            minLength={8}
-            required
-          />
-        </div>
-
-        {mode === "register" && (
-          <div className="form-group">
-            <label className="form-label" htmlFor="confirmPassword">Confirmer le mot de passe</label>
-            <input
-              id="confirmPassword"
-              type="password"
-              className="form-input"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="••••••••"
-              minLength={8}
-              required
-            />
-          </div>
-        )}
-
-        {error && <div className="form-error">{error}</div>}
-
-        <button
-          type="submit"
-          className="btn btn-primary"
-          style={{ width: "100%", marginTop: 24 }}
-          disabled={loading}
-        >
-          {loading ? (
-            <>
-              <LoadingSpinner /> Chargement...
-            </>
-          ) : mode === "login" ? (
-            "Se connecter"
-          ) : (
-            "Créer un compte"
-          )}
-        </button>
-      </form>
-
-      <div className="auth-footer">
-        {mode === "login" ? (
+      <button
+        type="button"
+        className="btn btn-primary btn-sso"
+        onClick={handleSignIn}
+        disabled={loading}
+      >
+        {loading ? (
           <>
-            Pas encore de compte ?{" "}
-            <a href="/register">Créer un compte</a>
+            <LoadingSpinner /> Redirection…
           </>
         ) : (
           <>
-            Déjà un compte ?{" "}
-            <a href="/login">Se connecter</a>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            Se connecter avec Authelia
           </>
         )}
+      </button>
+
+      <div className="auth-footer">
+        Authentification sécurisée via SSO
       </div>
     </div>
   );

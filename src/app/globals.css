@@ -856,6 +856,42 @@ input {
   color: var(--text-secondary);
 }
 
+/* ---------- SSO Button ---------- */
+.auth-sso-icon {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.auth-sso-icon svg {
+  display: inline-block;
+  filter: drop-shadow(0 4px 16px rgba(99, 102, 241, 0.3));
+  animation: ssoIconPulse 3s ease-in-out infinite;
+}
+
+@keyframes ssoIconPulse {
+  0%, 100% {
+    filter: drop-shadow(0 4px 16px rgba(99, 102, 241, 0.3));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 8px 24px rgba(168, 85, 247, 0.4));
+    transform: scale(1.05);
+  }
+}
+
+.btn-sso {
+  width: 100%;
+  margin-top: 8px;
+  padding: 16px 28px;
+  font-size: 1rem;
+  gap: 10px;
+}
+
+.btn-sso:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);
+}
+
 /* ---------- Status Badge ---------- */
 .status-badge {
   display: inline-flex;

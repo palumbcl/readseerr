@@ -44,12 +44,9 @@ export default function Navbar() {
               </div>
             </>
           ) : (
-            <>
-              <Link href="/login" className="navbar-link">Connexion</Link>
-              <Link href="/register" className="btn btn-primary" style={{ padding: "8px 20px", fontSize: "0.9rem" }}>
-                Inscription
-              </Link>
-            </>
+            <Link href="/login" className="btn btn-primary" style={{ padding: "8px 20px", fontSize: "0.9rem" }}>
+              Connexion
+            </Link>
           )}
         </div>
       </div>
