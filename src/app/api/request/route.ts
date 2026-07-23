@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendDiscordNotification } from "@/lib/discord";
 import type { RequestPayload } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -37,6 +38,13 @@ export async function POST(request: NextRequest) {
         status: "pending",
         targetService: "manual",
       },
+    });
+
+    // Notification Discord pour l'admin
+    await sendDiscordNotification({
+      title: title,
+      mediaType: mediaType,
+      userName: session.user.name,
     });
 
     return NextResponse.json({
