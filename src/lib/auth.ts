@@ -16,6 +16,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       issuer: process.env.AUTHELIA_ISSUER_URL,
       clientId: process.env.AUTHELIA_CLIENT_ID,
       clientSecret: process.env.AUTHELIA_CLIENT_SECRET,
+      client: {
+        token_endpoint_auth_method: "client_secret_post",
+      },
       authorization: {
         params: {
           scope: "openid profile groups",
