@@ -21,7 +21,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       authorization: {
         params: {
-          scope: "openid profile groups",
+          scope: "openid profile email groups",
         },
       },
       checks: ["pkce", "state"],
@@ -34,10 +34,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             : undefined) ||
           profile.sub;
 
+        const email =
+          profile.email ||
+          `${profile.sub}@authelia.local`;
+
         return {
           id: profile.sub,
           name,
-          email: profile.email,
+          email,
           image: profile.picture ?? null,
         };
       },
