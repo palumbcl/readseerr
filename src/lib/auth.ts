@@ -26,9 +26,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       checks: ["pkce", "state"],
       profile(profile) {
+        const name =
+          profile.preferred_username ||
+          profile.name ||
+          (typeof profile.email === "string"
+            ? profile.email.split("@")[0]
+            : undefined) ||
+          profile.sub;
+
         return {
           id: profile.sub,
-          name: profile.preferred_username || profile.name,
+          name,
           email: profile.email,
           image: profile.picture ?? null,
         };
