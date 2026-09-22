@@ -1,16 +1,70 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import LoadingSpinner from "./LoadingSpinner";
 
-export default function AuthForm() {
-  const [loading, setLoading] = useState(false);
+interface AuthFormProps {
+  ssoEnabled: boolean;
+  callbackUrl: string;
+  initialError?: string;
+}
 
-  const handleSignIn = () => {
-    setLoading(true);
-    signIn("authelia", { callbackUrl: "/" });
+// Codes d'erreur renvoyés par Auth.js dans ?error=
+const ERROR_MESSAGES: Record<string, string> = {
+  CredentialsSignin: "Email ou mot de passe incorrect.",
+  OAuthAccountNotLinked:
+    "Un compte local existe déjà avec cet email. Connectez-vous avec votre mot de passe.",
+  AccessDenied: "Accès refusé.",
+  Configuration: "Erreur de configuration du serveur d'authentification.",
+};
+
+function errorMessage(code?: string) {
+  if (!code) return "";
+  return ERROR_MESSAGES[code] ?? "La connexion a échoué. Réessayez.";
+}
+
+export default function AuthForm({ ssoEnabled, callbackUrl, initialError }: AuthFormProps) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(errorMessage(initialError));
+  const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
+  const router = useRouter();
+
+  const handleSsoSignIn = () => {
+    setSsoLoading(true);
+    signIn("authelia", { callbackUrl });
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (!result || result.error) {
+        setError(errorMessage(result?.error ?? "CredentialsSignin"));
+        setLoading(false);
+        return;
+      }
+
+      router.replace(callbackUrl);
+      router.refresh();
+    } catch {
+      setError("Erreur réseau. Vérifiez votre connexion.");
+      setLoading(false);
+    }
+  };
+
+  const busy = loading || ssoLoading;
 
   return (
     <div className="auth-card">
@@ -23,31 +77,73 @@ export default function AuthForm() {
               <stop offset="100%" stopColor="#a855f7" />
             </linearGradient>
           </defs>
-          <path
-            d="M24 14a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm0 10c-4.42 0-8 2.24-8 5v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1c0-2.76-3.58-5-8-5Z"
-            fill="white"
-            opacity="0.9"
-          />
-          <path
-            d="M33 20h-2v-2a1 1 0 0 0-2 0v2h-2a1 1 0 0 0 0 2h2v2a1 1 0 0 0 2 0v-2h2a1 1 0 0 0 0-2Z"
-            fill="white"
-            opacity="0.7"
-          />
+          <path d="M8 8h4v16H8zM14 8h4v10h-4zM20 8h4v16h-4z" transform="translate(8 8)" fill="white" opacity="0.9" />
         </svg>
       </div>
 
       <h1 className="auth-title">ReadSeerr</h1>
-      <p className="auth-subtitle">
-        Connectez-vous via votre compte Authelia pour accéder à l&apos;application
-      </p>
+      <p className="auth-subtitle">Connectez-vous pour accéder à l&apos;application</p>
+
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label className="form-label" htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            className="form-input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="vous@exemple.com"
+            autoComplete="username"
+            autoFocus
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="password">Mot de passe</label>
+          <input
+            id="password"
+            type="password"
+            className="form-input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            required
+          />
+        </div>
+
+        {error && <div className="form-error">{error}</div>}
+
+        <button
+          type="submit"
+          className="btn btn-primary"
+          style={{ width: "100%", marginTop: 24 }}
+          disabled={busy}
+        >
+          {loading ? (
+            <>
+              <LoadingSpinner /> Connexion…
+            </>
+          ) : (
+            "Se connecter"
+          )}
+        </button>
+      </form>
+
+      <div className="auth-divider">
+        <span>ou</span>
+      </div>
 
       <button
         type="button"
-        className="btn btn-primary btn-sso"
-        onClick={handleSignIn}
-        disabled={loading}
+        className="btn btn-secondary btn-sso"
+        onClick={handleSsoSignIn}
+        disabled={busy || !ssoEnabled}
+        title={ssoEnabled ? undefined : "SSO non configuré sur ce serveur"}
       >
-        {loading ? (
+        {ssoLoading ? (
           <>
             <LoadingSpinner /> Redirection…
           </>
@@ -57,14 +153,16 @@ export default function AuthForm() {
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            Se connecter avec Authelia
+            Se connecter en SSO (Authelia)
           </>
         )}
       </button>
 
-      <div className="auth-footer">
-        Authentification sécurisée via SSO
-      </div>
+      {!ssoEnabled && (
+        <p className="auth-footer">
+          SSO indisponible : variables AUTHELIA_* non configurées sur ce serveur.
+        </p>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
 
   // Routes publiques
+  // Seule la page de connexion est accessible sans session
   const publicRoutes = ["/login"];
   const publicApiRoutes = ["/api/auth", "/api/webhooks"];
   
@@ -20,6 +21,11 @@ export default auth((req) => {
     pathname.endsWith(".svg") ||
     pathname.endsWith(".ico");
 
+  // Si l'utilisateur est connecté et essaie d'aller sur /login, on le redirige vers l'accueil
+  if (req.auth && publicRoutes.includes(pathname)) {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
   if (isPublicRoute || isAsset) {
     return NextResponse.next();
   }
@@ -29,11 +35,6 @@ export default auth((req) => {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  // Si l'utilisateur est connecté et essaie d'aller sur /login, on le redirige vers l'accueil
-  if (req.auth && publicRoutes.includes(pathname)) {
-    return NextResponse.redirect(new URL("/", req.url));
   }
 
   return NextResponse.next();

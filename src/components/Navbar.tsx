@@ -8,6 +8,9 @@ export default function Navbar() {
 
   const userInitial = session?.user?.name?.charAt(0).toUpperCase() || "?";
 
+  // Pas de navigation tant que l'utilisateur n'est pas connecté
+  if (!session) return null;
+
   return (
     <nav className="navbar">
       <div className="navbar-inner">
@@ -28,26 +31,18 @@ export default function Navbar() {
 
         {/* Nav Links */}
         <div className="navbar-links">
-          {session ? (
-            <>
-              <Link href="/" className="navbar-link">Accueil</Link>
-              <Link href="/requests" className="navbar-link">Mes demandes</Link>
+          <Link href="/" className="navbar-link">Accueil</Link>
+          <Link href="/requests" className="navbar-link">Mes demandes</Link>
 
-              <div className="navbar-user">
-                <div className="navbar-avatar">{userInitial}</div>
-                <button
-                  className="navbar-logout"
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                >
-                  Déconnexion
-                </button>
-              </div>
-            </>
-          ) : (
-            <Link href="/login" className="btn btn-primary" style={{ padding: "8px 20px", fontSize: "0.9rem" }}>
-              Connexion
-            </Link>
-          )}
+          <div className="navbar-user">
+            <div className="navbar-avatar">{userInitial}</div>
+            <button
+              className="navbar-logout"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+            >
+              Déconnexion
+            </button>
+          </div>
         </div>
       </div>
     </nav>
