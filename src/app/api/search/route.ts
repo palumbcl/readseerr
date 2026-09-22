@@ -6,10 +6,20 @@ import { searchBDOpenLibrary } from "@/lib/openlibrary";
 import { searchCache } from "@/lib/cache";
 import type { MediaResult } from "@/lib/types";
 
+async function searchBDWithFallback(query: string): Promise<MediaResult[]> {
+  const [gbResults, olResults] = await Promise.allSettled([
+    searchBD(query),
+    searchBDOpenLibrary(query),
+  ]);
+  const gbData = gbResults.status === "fulfilled" ? gbResults.value : [];
+  const olData = olResults.status === "fulfilled" ? olResults.value : [];
+  return gbData.length > 0 ? gbData : olData;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q");
-  const type = searchParams.get("type") || "manga";
+  const type = searchParams.get("type"); // optional: "manga" | "comic" | "bd"
 
   if (!query || query.trim().length < 2) {
     return NextResponse.json(
@@ -19,50 +29,46 @@ export async function GET(request: NextRequest) {
   }
 
   // Check cache
-  const cacheKey = `search:${type}:${query.toLowerCase().trim()}`;
+  const cacheKey = `search:${type || "all"}:${query.toLowerCase().trim()}`;
   const cached = searchCache.get(cacheKey) as MediaResult[] | null;
   if (cached) {
     return NextResponse.json({ results: cached });
   }
 
   try {
-    let results: MediaResult[] = [];
+    let results: MediaResult[];
 
-    switch (type) {
-      case "manga":
-        results = await searchManga(query);
-        break;
-
-      case "comic":
-        results = await searchComics(query);
-        break;
-
-      case "bd": {
-        // Strategy: Use both sources in parallel, prefer Google Books but
-        // gracefully fall back to Open Library (which has no rate limit)
-        const [gbResults, olResults] = await Promise.allSettled([
-          searchBD(query),
-          searchBDOpenLibrary(query),
-        ]);
-
-        const gbData = gbResults.status === "fulfilled" ? gbResults.value : [];
-        const olData = olResults.status === "fulfilled" ? olResults.value : [];
-
-        if (gbData.length > 0) {
-          // Google Books worked — use it as primary
-          results = gbData;
-        } else {
-          // Google Books failed or empty — use Open Library
-          results = olData;
-        }
-        break;
+    if (type) {
+      // Single-source search (fast, used by autocomplete & progressive loading)
+      switch (type) {
+        case "manga":
+          results = await searchManga(query);
+          break;
+        case "comic":
+          results = await searchComics(query);
+          break;
+        case "bd":
+          results = await searchBDWithFallback(query);
+          break;
+        default:
+          return NextResponse.json(
+            { error: "Invalid type. Use 'manga', 'comic', or 'bd'." },
+            { status: 400 }
+          );
       }
+    } else {
+      // All-sources search (parallel)
+      const [mangaResult, comicResult, bdResult] = await Promise.allSettled([
+        searchManga(query),
+        searchComics(query),
+        searchBDWithFallback(query),
+      ]);
 
-      default:
-        return NextResponse.json(
-          { error: "Invalid type. Use 'manga', 'comic', or 'bd'." },
-          { status: 400 }
-        );
+      results = [
+        ...(mangaResult.status === "fulfilled" ? mangaResult.value : []),
+        ...(comicResult.status === "fulfilled" ? comicResult.value : []),
+        ...(bdResult.status === "fulfilled" ? bdResult.value : []),
+      ];
     }
 
     // Cache results
@@ -70,10 +76,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ results });
   } catch (error) {
-    console.error(`Search error [${type}]:`, error);
+    console.error(`Search error${type ? ` [${type}]` : ""}:`, error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Search failed." },
       { status: 500 }
     );
   }
 }
+
