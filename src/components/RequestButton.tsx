@@ -34,6 +34,9 @@ export default function RequestButton({ media }: RequestButtonProps) {
         title: media.title,
         coverUrl: media.coverUrl || undefined,
         volumes,
+        year: media.year,
+        publisher: media.publisher,
+        author: media.author,
       };
 
       const response = await fetch("/api/request", {

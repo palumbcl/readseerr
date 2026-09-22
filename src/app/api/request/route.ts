@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendDiscordNotification } from "@/lib/discord";
+import { findKomgaSeries } from "@/lib/komga";
 import type { RequestPayload } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: RequestPayload = await request.json();
-    const { mediaType, externalId, title, coverUrl, volumes } = body;
+    const { mediaType, externalId, title, coverUrl, volumes, year, publisher, author } = body;
 
     // Validation
     if (!mediaType || !externalId || !title) {
@@ -25,6 +26,16 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Détection de doublons pour l'admin : demandes existantes sur la même œuvre + présence dans Komga
+    const [previousRequests, komgaMatches] = await Promise.all([
+      prisma.request.findMany({
+        where: { mediaType, externalId },
+        include: { user: { select: { name: true, email: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+      findKomgaSeries(title),
+    ]);
 
     // Create request record in DB
     const dbRequest = await prisma.request.create({
@@ -42,9 +53,21 @@ export async function POST(request: NextRequest) {
 
     // Notification Discord pour l'admin
     await sendDiscordNotification({
-      title: title,
-      mediaType: mediaType,
-      userName: session.user.name,
+      title,
+      mediaType,
+      externalId,
+      coverUrl,
+      volumes,
+      year,
+      publisher,
+      author,
+      userName: session.user.name || session.user.email,
+      previousRequests: previousRequests.map((req) => ({
+        userName: req.user.name || req.user.email,
+        status: req.status,
+        createdAt: req.createdAt,
+      })),
+      komgaMatches,
     });
 
     return NextResponse.json({
