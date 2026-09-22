@@ -10,6 +10,7 @@ interface SearchBarProps {
 }
 
 const MEDIA_TYPES = ["manga", "comic", "bd"] as const;
+const SUGGESTIONS_PER_SOURCE = 6;
 
 const TYPE_LABELS: Record<string, { emoji: string; label: string }> = {
   manga: { emoji: "🇯🇵", label: "Manga" },
@@ -51,7 +52,7 @@ export default function SearchBar({ defaultQuery = "", compact = false }: Search
       const fetches = MEDIA_TYPES.map((type) =>
         fetch(`/api/search?q=${encodeURIComponent(q.trim())}&type=${type}`, { signal })
           .then((res) => (res.ok ? res.json() : { results: [] }))
-          .then((data) => (data.results || []) as MediaResult[])
+          .then((data) => ((data.results || []) as MediaResult[]).slice(0, SUGGESTIONS_PER_SOURCE))
           .catch(() => [] as MediaResult[])
       );
 

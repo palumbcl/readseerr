@@ -4,13 +4,14 @@
  * No API key required for public queries.
  */
 
-import type { MediaResult, MediaDetail, VolumeInfo } from "@/lib/types";
+import type { MediaResult, MediaDetail, VolumeInfo, SearchPage } from "@/lib/types";
 
 const ANILIST_URL = "https://graphql.anilist.co";
 
 const SEARCH_QUERY = `
 query ($search: String!, $page: Int, $perPage: Int) {
   Page(page: $page, perPage: $perPage) {
+    pageInfo { hasNextPage lastPage total }
     media(search: $search, type: MANGA, sort: POPULARITY_DESC) {
       id
       title {
@@ -155,17 +156,31 @@ function mediaToResult(media: AniListMedia): MediaResult {
     type: "manga",
     publisher: null,
     author: getAuthor(media.staff),
+    volumeCount: media.volumes,
   };
 }
 
-export async function searchManga(query: string): Promise<MediaResult[]> {
-  const data = await queryAniList<{ Page: { media: AniListMedia[] } }>(SEARCH_QUERY, {
+const PER_PAGE = 50; // AniList maximum
+
+export async function searchManga(query: string, page = 1): Promise<SearchPage> {
+  const data = await queryAniList<{
+    Page: {
+      pageInfo: { hasNextPage: boolean; lastPage: number; total: number };
+      media: AniListMedia[];
+    };
+  }>(SEARCH_QUERY, {
     search: query,
-    page: 1,
-    perPage: 20,
+    page,
+    perPage: PER_PAGE,
   });
 
-  return data.Page.media.map(mediaToResult);
+  const { pageInfo } = data.Page;
+  return {
+    results: data.Page.media.map(mediaToResult),
+    hasMore: pageInfo.hasNextPage,
+    totalPages: pageInfo.lastPage,
+    total: pageInfo.total,
+  };
 }
 
 export async function getMangaDetails(id: string): Promise<MediaDetail> {

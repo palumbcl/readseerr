@@ -14,6 +14,12 @@ export default function MediaCard({ media }: MediaCardProps) {
     router.push(`/details/${media.type}/${media.id}`);
   };
 
+  // Many series share a name (dozens of "Spider-Man" volumes), so show what tells them apart
+  const meta = [media.year, media.publisher ?? media.author].filter(Boolean).join(" · ");
+  const count = media.volumeCount
+    ? `${media.volumeCount} ${media.type === "comic" ? "numéro" : "tome"}${media.volumeCount > 1 ? "s" : ""}`
+    : null;
+
   return (
     <div className="media-card" onClick={handleClick} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && handleClick()}>
       {media.coverUrl ? (
@@ -33,10 +39,8 @@ export default function MediaCard({ media }: MediaCardProps) {
 
       <div className="media-card-overlay">
         <div className="media-card-title">{media.title}</div>
-        {media.year && <div className="media-card-year">{media.year}</div>}
-        {media.author && (
-          <div className="media-card-year">{media.author}</div>
-        )}
+        {meta && <div className="media-card-year">{meta}</div>}
+        {count && <div className="media-card-year">{count}</div>}
       </div>
     </div>
   );

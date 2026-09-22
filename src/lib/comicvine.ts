@@ -4,7 +4,8 @@
  * Requires API key (free, non-commercial).
  */
 
-import type { MediaResult, MediaDetail, VolumeInfo } from "@/lib/types";
+import type { MediaDetail, VolumeInfo, SearchPage } from "@/lib/types";
+import { isEnglishOrFrenchPublisher } from "@/lib/publishers";
 
 const COMICVINE_BASE = "https://comicvine.gamespot.com/api";
 const USER_AGENT = "ReadSeerr/1.0";
@@ -78,9 +79,11 @@ function stripHtml(html: string | null): string | null {
     .trim();
 }
 
-export async function searchComics(query: string): Promise<MediaResult[]> {
+const PER_PAGE = 100; // ComicVine maximum
+
+export async function searchComics(query: string, page = 1): Promise<SearchPage> {
   const apiKey = getApiKey();
-  const url = `${COMICVINE_BASE}/search/?api_key=${apiKey}&format=json&resources=volume&query=${encodeURIComponent(query)}&limit=20&field_list=id,name,start_year,image,publisher,count_of_issues,deck`;
+  const url = `${COMICVINE_BASE}/search/?api_key=${apiKey}&format=json&resources=volume&query=${encodeURIComponent(query)}&limit=${PER_PAGE}&page=${page}&field_list=id,name,start_year,image,publisher,count_of_issues,deck`;
 
   const response = await fetchWithRetry(url);
   const data = await response.json();
@@ -89,17 +92,29 @@ export async function searchComics(query: string): Promise<MediaResult[]> {
     throw new Error(`ComicVine search error: ${data.error}`);
   }
 
-  const results: CVSearchResult[] = data.results || [];
+  // Foreign-language editions are dropped, so a page may hold fewer than PER_PAGE results
+  const results: CVSearchResult[] = (data.results || []).filter((vol: CVSearchResult) =>
+    isEnglishOrFrenchPublisher(vol.publisher?.name)
+  );
 
-  return results.map((vol) => ({
-    id: String(vol.id),
-    title: vol.name || "Unknown",
-    year: vol.start_year ? parseInt(vol.start_year, 10) : null,
-    coverUrl: vol.image?.super_url || vol.image?.medium_url || null,
-    type: "comic" as const,
-    publisher: vol.publisher?.name || null,
-    author: null,
-  }));
+  const fetched = (data.offset ?? 0) + (data.number_of_page_results ?? 0);
+  const total: number = data.number_of_total_results ?? 0;
+
+  return {
+    results: results.map((vol) => ({
+      id: String(vol.id),
+      title: vol.name || "Unknown",
+      year: vol.start_year ? parseInt(vol.start_year, 10) : null,
+      coverUrl: vol.image?.super_url || vol.image?.medium_url || null,
+      type: "comic" as const,
+      publisher: vol.publisher?.name || null,
+      author: null,
+      volumeCount: vol.count_of_issues || null,
+    })),
+    hasMore: (data.number_of_page_results ?? 0) > 0 && fetched < total,
+    totalPages: Math.ceil(total / PER_PAGE),
+    total,
+  };
 }
 
 export async function getComicDetails(id: string): Promise<MediaDetail> {

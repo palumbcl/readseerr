@@ -496,6 +496,95 @@ input {
   background: rgba(255, 255, 255, 0.25);
 }
 
+/* ---------- Search pagination (infinite scroll) ---------- */
+.search-more {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80px;
+  padding: 8px 0 40px;
+}
+
+.search-progress {
+  height: 4px;
+  max-width: 320px;
+  margin-top: 12px;
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.search-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-gradient);
+  transition: width var(--transition);
+}
+
+.search-notice {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  color: var(--warning);
+  background: var(--warning-bg);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.search-more-end {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- Filter Selects (sort / author) ---------- */
+.filter-selects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0 0 20px;
+}
+
+.filter-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.filter-select-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.filter-select select {
+  min-width: 0;
+  max-width: 260px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-select select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.filter-select select:not(:disabled):hover,
+.filter-select select:focus {
+  border-color: var(--border-hover);
+  background: var(--bg-elevated);
+  outline: none;
+}
+
 /* ---------- Media Card ---------- */
 .media-card {
   position: relative;
@@ -676,12 +765,47 @@ input {
   background: linear-gradient(to bottom, rgba(10, 14, 23, 0.3) 0%, var(--bg-primary) 100%);
 }
 
+.details-back-bar {
+  position: relative;
+  z-index: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 24px 0;
+}
+
+.details-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px 8px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all var(--transition-fast);
+}
+
+.details-back:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+  background: var(--bg-elevated);
+}
+
+.details-back svg {
+  width: 16px;
+  height: 16px;
+}
+
 .details-content {
   position: relative;
   z-index: 1;
   display: flex;
   gap: 36px;
-  padding-top: 80px;
+  padding-top: 32px;
   max-width: 1280px;
   margin: 0 auto;
   padding-left: 24px;
@@ -769,7 +893,11 @@ input {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding-top: 40px;
+    padding-top: 24px;
+  }
+
+  .details-back-bar {
+    padding: 16px 16px 0;
   }
 
   .details-cover {
@@ -1076,9 +1204,26 @@ input {
   gap: 10px;
 }
 
-.btn-sso:hover {
+.btn-sso:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-hover);
 }
 
 /* ---------- Status Badge ---------- */

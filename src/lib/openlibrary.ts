@@ -5,7 +5,7 @@
  * No API key required. No aggressive rate limiting.
  */
 
-import type { MediaResult, MediaDetail, VolumeInfo } from "@/lib/types";
+import type { MediaDetail, VolumeInfo, SearchPage } from "@/lib/types";
 
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const OL_COVERS = "https://covers.openlibrary.org/b/id";
@@ -58,8 +58,10 @@ interface OLEditionsResponse {
   entries: OLEdition[];
 }
 
-export async function searchBDOpenLibrary(query: string): Promise<MediaResult[]> {
-  const url = `${OL_SEARCH}?q=${encodeURIComponent(query)}&language=fre&limit=20`;
+const PER_PAGE = 100;
+
+export async function searchBDOpenLibrary(query: string, page = 1): Promise<SearchPage> {
+  const url = `${OL_SEARCH}?q=${encodeURIComponent(query)}&language=fre&limit=${PER_PAGE}&page=${page}`;
 
   const response = await fetch(url, {
     headers: { "User-Agent": "ReadSeerr/1.0 (self-hosted reading request app)" },
@@ -71,15 +73,20 @@ export async function searchBDOpenLibrary(query: string): Promise<MediaResult[]>
 
   const data: OLSearchResponse = await response.json();
 
-  return data.docs.map((doc) => ({
-    id: doc.key.replace("/works/", "ol-"),
-    title: doc.title,
-    year: doc.first_publish_year ?? null,
-    coverUrl: doc.cover_i ? `${OL_COVERS}/${doc.cover_i}-L.jpg` : null,
-    type: "bd" as const,
-    publisher: doc.publisher?.[0] || null,
-    author: doc.author_name?.[0] || null,
-  }));
+  return {
+    results: data.docs.map((doc) => ({
+      id: doc.key.replace("/works/", "ol-"),
+      title: doc.title,
+      year: doc.first_publish_year ?? null,
+      coverUrl: doc.cover_i ? `${OL_COVERS}/${doc.cover_i}-L.jpg` : null,
+      type: "bd" as const,
+      publisher: doc.publisher?.[0] || null,
+      author: doc.author_name?.[0] || null,
+    })),
+    hasMore: page * PER_PAGE < data.numFound,
+    totalPages: Math.ceil(data.numFound / PER_PAGE),
+    total: data.numFound,
+  };
 }
 
 /**

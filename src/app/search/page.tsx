@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense, useCallback, useRef, useMemo } from "react";
 import SearchBar from "@/components/SearchBar";
 import MediaGrid from "@/components/MediaGrid";
-import type { MediaResult, MediaType } from "@/lib/types";
+import type { MediaResult, MediaType, SearchPage } from "@/lib/types";
 
 const MEDIA_TYPES = ["manga", "comic", "bd"] as const;
 
@@ -15,79 +15,190 @@ const FILTER_OPTIONS: { value: MediaType | "all"; label: string; emoji: string }
   { value: "bd", label: "BD", emoji: "🇫🇷" },
 ];
 
+const TYPE_LABELS: Record<MediaType, string> = {
+  manga: "manga",
+  comic: "comics",
+  bd: "BD",
+};
+
+// Sorting is purely client-side, applied once every result has been loaded
+type SortOrder = "relevance" | "newest" | "oldest";
+
+const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
+  { value: "relevance", label: "Pertinence" },
+  { value: "newest", label: "Plus récent → plus ancien" },
+  { value: "oldest", label: "Plus ancien → plus récent" },
+];
+
+/**
+ * Every page of every source is loaded up front so sorting and filtering see the
+ * whole result set. Caps keep a very broad query from draining API quotas
+ * (ComicVine: ~200 requests/hour, 100 results/page).
+ */
+const MAX_PAGES: Record<MediaType, number> = {
+  manga: 40, // 50/page → 2 000 series
+  comic: 40, // 100/page → 4 000 series
+  bd: 10, // Google Books pages are throttled server-side (1.5 s each)
+};
+const PARALLEL_PAGES = 3;
+
+/** Cards rendered at once; more are revealed while scrolling (keeps the DOM light) */
+const DISPLAY_STEP = 120;
+
+interface SourceState {
+  loadedPages: number;
+  /** Pages expected in total (capped), null while unknown */
+  totalPages: number | null;
+  /** Matches reported by the source, when known */
+  total: number | null;
+  done: boolean;
+  /** Stopped at MAX_PAGES while the source still had results */
+  capped: boolean;
+  failed: boolean;
+}
+
+type SourcesState = Record<MediaType, SourceState>;
+
+const initialSource = (): SourceState => ({
+  loadedPages: 0,
+  totalPages: null,
+  total: null,
+  done: false,
+  capped: false,
+  failed: false,
+});
+
+const initialSources = (): SourcesState => ({
+  manga: initialSource(),
+  comic: initialSource(),
+  bd: initialSource(),
+});
+
+const resultKey = (r: MediaResult) => `${r.type}-${r.id}`;
+
 function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || "";
 
   const [results, setResults] = useState<MediaResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [sourcesLoaded, setSourcesLoaded] = useState(0);
-  const [error, setError] = useState("");
+  const [sources, setSources] = useState<SourcesState>(initialSources);
   const [activeFilters, setActiveFilters] = useState<Set<MediaType | "all">>(new Set(["all"]));
-  const abortRef = useRef<AbortController | null>(null);
+  const [sortOrder, setSortOrder] = useState<SortOrder>("relevance");
+  const [authorFilter, setAuthorFilter] = useState("");
+  const [displayCount, setDisplayCount] = useState(DISPLAY_STEP);
 
-  const doSearch = useCallback(async () => {
-    if (!query || query.length < 2) return;
+  // Pages arrive out of order (parallel fetches): keep them keyed by source/page and
+  // rebuild the list in page order so the relevance ranking is preserved
+  const chunksRef = useRef(new Map<string, { type: MediaType; page: number; items: MediaResult[] }>());
+  const sourcesRef = useRef<SourcesState>(sources);
+  const generationRef = useRef(0);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-    // Cancel previous search
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
-    abortRef.current = new AbortController();
-    const { signal } = abortRef.current;
-
-    setLoading(true);
-    setError("");
-    setResults([]);
-    setSourcesLoaded(0);
-    setActiveFilters(new Set(["all"]));
-
-    try {
-      const accumulated: MediaResult[] = [];
-
-      // Fire 3 parallel per-source requests
-      const fetches = MEDIA_TYPES.map(async (type) => {
-        try {
-          const response = await fetch(
-            `/api/search?q=${encodeURIComponent(query)}&type=${type}`,
-            { signal }
-          );
-          const data = await response.json();
-          const sourceResults: MediaResult[] = data.results || [];
-
-          if (!signal.aborted) {
-            accumulated.push(...sourceResults);
-            setResults([...accumulated]);
-            setSourcesLoaded((prev) => prev + 1);
-          }
-        } catch (err) {
-          if (!signal.aborted) {
-            // Source failed, still count it as loaded
-            setSourcesLoaded((prev) => prev + 1);
-            console.error(`Search error [${type}]:`, err);
-          }
-        }
-      });
-
-      await Promise.allSettled(fetches);
-
-      if (!signal.aborted) {
-        setLoading(false);
-      }
-    } catch {
-      if (!signal.aborted) {
-        setError("Erreur réseau.");
-        setLoading(false);
-      }
-    }
-  }, [query]);
-
-  useEffect(() => {
-    doSearch();
-    return () => {
-      if (abortRef.current) abortRef.current.abort();
+  const updateSource = useCallback((type: MediaType, patch: Partial<SourceState>) => {
+    sourcesRef.current = {
+      ...sourcesRef.current,
+      [type]: { ...sourcesRef.current[type], ...patch },
     };
-  }, [doSearch]);
+    setSources(sourcesRef.current);
+  }, []);
+
+  const rebuildResults = useCallback(() => {
+    const chunks = [...chunksRef.current.values()].sort(
+      (a, b) => a.page - b.page || MEDIA_TYPES.indexOf(a.type) - MEDIA_TYPES.indexOf(b.type)
+    );
+    const seen = new Set<string>();
+    const list: MediaResult[] = [];
+    for (const chunk of chunks) {
+      for (const r of chunk.items) {
+        const key = resultKey(r);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        list.push(r);
+      }
+    }
+    setResults(list);
+  }, []);
+
+  /** Loads every page of one source: page 1 first, then the rest PARALLEL_PAGES at a time */
+  const loadSource = useCallback(
+    async (type: MediaType, generation: number, signal: AbortSignal) => {
+      const isCurrent = () => generation === generationRef.current;
+      const maxPages = MAX_PAGES[type];
+
+      const fetchPage = async (page: number): Promise<SearchPage> => {
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(query)}&type=${type}&page=${page}`,
+          { signal }
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data: SearchPage = await response.json();
+        if (isCurrent()) {
+          chunksRef.current.set(`${type}:${page}`, { type, page, items: data.results });
+          updateSource(type, { loadedPages: sourcesRef.current[type].loadedPages + 1 });
+          rebuildResults();
+        }
+        return data;
+      };
+
+      try {
+        const first = await fetchPage(1);
+        if (!isCurrent()) return;
+
+        const knownPages = first.totalPages ? Math.min(first.totalPages, maxPages) : null;
+        updateSource(type, { totalPages: knownPages, total: first.total ?? null });
+
+        let hasMore = first.hasMore;
+        let next = 2;
+        while (hasMore && next <= maxPages && isCurrent()) {
+          // Page count known → fetch a batch in parallel; unknown → one page at a time
+          const last = knownPages && knownPages >= next
+            ? Math.min(knownPages, next + PARALLEL_PAGES - 1)
+            : next;
+          const pages = Array.from({ length: last - next + 1 }, (_, i) => next + i);
+          const batch = await Promise.all(pages.map(fetchPage));
+          hasMore = batch[batch.length - 1].hasMore;
+          next = last + 1;
+        }
+
+        if (isCurrent()) {
+          updateSource(type, { done: true, capped: hasMore && next > maxPages });
+        }
+      } catch (err) {
+        if (!isCurrent()) return; // superseded by a new search
+        console.error(`Search error [${type}]:`, err);
+        // Keep what was loaded, just stop this source
+        updateSource(type, { done: true, failed: true });
+      }
+    },
+    [query, updateSource, rebuildResults]
+  );
+
+  // New query: reset everything and load all sources in parallel
+  useEffect(() => {
+    generationRef.current += 1;
+    const generation = generationRef.current;
+    const controller = new AbortController();
+
+    chunksRef.current.clear();
+    sourcesRef.current = initialSources();
+    setSources(sourcesRef.current);
+    setResults([]);
+    setActiveFilters(new Set(["all"]));
+    setSortOrder("relevance");
+    setAuthorFilter("");
+    setDisplayCount(DISPLAY_STEP);
+
+    if (query.length >= 2) {
+      MEDIA_TYPES.forEach((type) => loadSource(type, generation, controller.signal));
+    }
+
+    return () => controller.abort();
+  }, [query, loadSource]);
+
+  // Back to the top of the list whenever the view changes
+  useEffect(() => {
+    setDisplayCount(DISPLAY_STEP);
+  }, [activeFilters, authorFilter, sortOrder]);
 
   const handleFilterToggle = useCallback((value: MediaType | "all") => {
     setActiveFilters((prev) => {
@@ -115,12 +226,76 @@ function SearchContent() {
     });
   }, []);
 
-  const filteredResults = useMemo(() => {
-    if (activeFilters.has("all")) return results;
-    return results.filter((r) => activeFilters.has(r.type));
-  }, [results, activeFilters]);
+  // Distinct authors among loaded results, alphabetically sorted
+  const authors = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of results) {
+      if (r.author) set.add(r.author);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, "fr"));
+  }, [results]);
 
-  const allDone = sourcesLoaded >= MEDIA_TYPES.length;
+  const filteredResults = useMemo(() => {
+    let list = activeFilters.has("all")
+      ? results
+      : results.filter((r) => activeFilters.has(r.type));
+
+    if (authorFilter) {
+      list = list.filter((r) => r.author === authorFilter);
+    }
+
+    if (sortOrder !== "relevance") {
+      const dir = sortOrder === "newest" ? -1 : 1;
+      // Results without a year always go last
+      list = [...list].sort((a, b) => {
+        if (a.year === null && b.year === null) return 0;
+        if (a.year === null) return 1;
+        if (b.year === null) return -1;
+        return (a.year - b.year) * dir;
+      });
+    }
+
+    return list;
+  }, [results, activeFilters, authorFilter, sortOrder]);
+
+  const displayedResults = useMemo(
+    () => filteredResults.slice(0, displayCount),
+    [filteredResults, displayCount]
+  );
+  const hasHiddenCards = displayCount < filteredResults.length;
+
+  // Reveal more cards when the bottom of the grid comes into view
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasHiddenCards) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setDisplayCount((c) => c + DISPLAY_STEP);
+      },
+      { rootMargin: "800px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasHiddenCards, displayCount]);
+
+  const allDone = MEDIA_TYPES.every((t) => sources[t].done);
+  const firstPagesDone = MEDIA_TYPES.every((t) => sources[t].loadedPages >= 1 || sources[t].done);
+  const count = filteredResults.length;
+
+  // Progress over the pages we know about (unknown counts assume one more page)
+  const progress = useMemo(() => {
+    let loaded = 0;
+    let expected = 0;
+    for (const t of MEDIA_TYPES) {
+      const s = sources[t];
+      loaded += s.loadedPages;
+      expected += s.done ? s.loadedPages : Math.max(s.totalPages ?? s.loadedPages + 1, s.loadedPages + 1);
+    }
+    return expected > 0 ? Math.round((loaded / expected) * 100) : 0;
+  }, [sources]);
+
+  const cappedSources = MEDIA_TYPES.filter((t) => sources[t].capped);
+  const failedSources = MEDIA_TYPES.filter((t) => sources[t].failed);
 
   return (
     <div className="page-content">
@@ -135,10 +310,41 @@ function SearchContent() {
               Résultats pour &laquo;{query}&raquo;
             </h1>
             <p className="page-subtitle">
-              {allDone
-                ? `${filteredResults.length} résultat${filteredResults.length !== 1 ? "s" : ""} trouvé${filteredResults.length !== 1 ? "s" : ""}`
-                : `${filteredResults.length} résultat${filteredResults.length !== 1 ? "s" : ""} — recherche en cours…`}
+              {`${count} résultat${count !== 1 ? "s" : ""}`}
+              {!allDone && " — chargement de tous les résultats…"}
             </p>
+            {!allDone && firstPagesDone && (
+              <div
+                className="search-progress"
+                role="progressbar"
+                aria-valuenow={progress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div className="search-progress-bar" style={{ width: `${progress}%` }} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {allDone && cappedSources.length > 0 && (
+          <div className="search-notice">
+            Cette recherche est très large : seuls les{" "}
+            {cappedSources
+              .map((t) => {
+                const s = sources[t];
+                const shown = results.filter((r) => r.type === t).length;
+                return `${shown.toLocaleString("fr-FR")} premiers ${TYPE_LABELS[t]}${s.total ? ` (sur ${s.total.toLocaleString("fr-FR")})` : ""}`;
+              })
+              .join(" et ")}{" "}
+            sont chargés. Précisez votre recherche pour trouver les autres.
+          </div>
+        )}
+
+        {allDone && failedSources.length > 0 && (
+          <div className="search-notice">
+            Certains résultats {failedSources.map((t) => TYPE_LABELS[t]).join(" et ")} n&apos;ont
+            pas pu être chargés (source indisponible ou quota atteint). Réessayez plus tard.
           </div>
         )}
 
@@ -163,9 +369,64 @@ function SearchContent() {
           </div>
         )}
 
-        {error && <div className="form-error">{error}</div>}
+        {/* Sort & author filters */}
+        {results.length > 0 && (
+          <div className="filter-selects">
+            <label className="filter-select">
+              <span className="filter-select-label">Trier par</span>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                disabled={!allDone}
+                title={allDone ? undefined : "Disponible une fois tous les résultats chargés"}
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <MediaGrid results={filteredResults} loading={loading && results.length === 0} />
+            {authors.length > 0 && (
+              <label className="filter-select">
+                <span className="filter-select-label">Auteur</span>
+                <select
+                  value={authorFilter}
+                  onChange={(e) => setAuthorFilter(e.target.value)}
+                >
+                  <option value="">Tous les auteurs</option>
+                  {authors.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+        )}
+
+        <MediaGrid
+          results={displayedResults}
+          loading={!firstPagesDone && results.length === 0}
+        />
+
+        {/* Reveals more cards on scroll */}
+        <div ref={sentinelRef} className="search-more">
+          {hasHiddenCards && (
+            <button
+              type="button"
+              className="filter-chip"
+              onClick={() => setDisplayCount((c) => c + DISPLAY_STEP)}
+            >
+              Afficher plus ({(filteredResults.length - displayCount).toLocaleString("fr-FR")} restants)
+            </button>
+          )}
+          {!hasHiddenCards && allDone && results.length > 0 && (
+            <span className="search-more-end">Tous les résultats sont affichés</span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -186,4 +447,3 @@ export default function SearchPage() {
     </Suspense>
   );
 }
-

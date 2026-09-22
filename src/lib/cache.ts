@@ -51,5 +51,6 @@ export class MemoryCache<T> {
 }
 
 // Shared cache instances
-export const searchCache = new MemoryCache<unknown>(300); // 5 min
+// Long TTL: a full search can take dozens of ComicVine pages (quota: ~200 requests/hour)
+export const searchCache = new MemoryCache<unknown>(3600); // 1 h
 export const detailsCache = new MemoryCache<unknown>(600); // 10 min

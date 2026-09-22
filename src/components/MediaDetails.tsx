@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { MediaDetail } from "@/lib/types";
 import RequestButton from "./RequestButton";
 
@@ -8,7 +9,28 @@ interface MediaDetailsProps {
 }
 
 export default function MediaDetails({ detail }: MediaDetailsProps) {
+  const router = useRouter();
   const bgImage = detail.bannerUrl || detail.coverUrl;
+
+  // Go back to the previous page (search results); fall back to home when the
+  // details page was opened directly (new tab, shared link)
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  };
+
+  // Series span: "1997 – en cours", "2004 – 2010", or just the start year
+  const endYear = detail.endDate ? parseInt(detail.endDate.substring(0, 4), 10) : null;
+  const yearLabel = !detail.year
+    ? null
+    : endYear && endYear !== detail.year
+      ? `${detail.year} – ${endYear}`
+      : detail.status === "En cours" || detail.status === "En pause"
+        ? `${detail.year} – en cours`
+        : String(detail.year);
 
   return (
     <div className="details-hero">
@@ -18,6 +40,13 @@ export default function MediaDetails({ detail }: MediaDetailsProps) {
           <div className="details-hero-overlay" />
         </>
       )}
+
+      <div className="details-back-bar">
+        <button type="button" className="details-back" onClick={handleBack}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Retour
+        </button>
+      </div>
 
       <div className="details-content">
         {/* Cover */}
@@ -39,10 +68,10 @@ export default function MediaDetails({ detail }: MediaDetailsProps) {
               {detail.type === "manga" ? "🇯🇵 Manga" : detail.type === "comic" ? "🇺🇸 Comic" : "🇫🇷 BD"}
             </span>
 
-            {detail.year && (
+            {yearLabel && (
               <div className="details-meta-item">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                {detail.year}
+                {yearLabel}
               </div>
             )}
 

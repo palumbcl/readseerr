@@ -7,7 +7,7 @@
  * We implement throttling and retry with exponential backoff.
  */
 
-import type { MediaResult, MediaDetail, VolumeInfo } from "@/lib/types";
+import type { MediaResult, MediaDetail, VolumeInfo, SearchPage } from "@/lib/types";
 
 const GBOOKS_BASE = "https://www.googleapis.com/books/v1/volumes";
 
@@ -112,33 +112,44 @@ function volumeToResult(vol: GBVolume): MediaResult {
   };
 }
 
-export async function searchBD(query: string): Promise<MediaResult[]> {
+const PER_PAGE = 40; // Google Books maximum
+
+// Optional: without a key the anonymous daily quota is shared and quickly exhausted
+function keyParam(): string {
+  const key = process.env.GOOGLE_BOOKS_API_KEY;
+  return key ? `&key=${encodeURIComponent(key)}` : "";
+}
+
+export async function searchBD(query: string, page = 1): Promise<SearchPage> {
+  const startIndex = (page - 1) * PER_PAGE;
   const searchQuery = `${query}+subject:comics`;
-  const url = `${GBOOKS_BASE}?q=${encodeURIComponent(searchQuery)}&langRestrict=fr&maxResults=12&orderBy=relevance&printType=books`;
+  const url = `${GBOOKS_BASE}?q=${encodeURIComponent(searchQuery)}&langRestrict=fr&maxResults=${PER_PAGE}&startIndex=${startIndex}&orderBy=relevance&printType=books${keyParam()}`;
 
   const response = await throttledFetch(url);
 
   // Gracefully handle rate limiting - return empty results
   if (!response.ok) {
-    return [];
+    return { results: [], hasMore: false };
   }
 
   const data: GBSearchResponse = await response.json();
+  const items = data.items || [];
 
-  if (!data.items || data.totalItems === 0) {
+  if (items.length === 0 && page === 1) {
     // Fallback: try without subject filter (with throttle)
-    const fallbackUrl = `${GBOOKS_BASE}?q=${encodeURIComponent(query)}&langRestrict=fr&maxResults=12&orderBy=relevance`;
+    const fallbackUrl = `${GBOOKS_BASE}?q=${encodeURIComponent(query)}&langRestrict=fr&maxResults=${PER_PAGE}&orderBy=relevance${keyParam()}`;
     const fallbackResponse = await throttledFetch(fallbackUrl);
-    if (!fallbackResponse.ok) return [];
+    if (!fallbackResponse.ok) return { results: [], hasMore: false };
     const fallbackData: GBSearchResponse = await fallbackResponse.json();
-    return (fallbackData.items || []).map(volumeToResult);
+    return { results: (fallbackData.items || []).map(volumeToResult), hasMore: false };
   }
 
-  return data.items.map(volumeToResult);
+  // totalItems is only an estimate on Google Books, so rely on page fullness
+  return { results: items.map(volumeToResult), hasMore: items.length === PER_PAGE };
 }
 
 export async function getBDDetails(id: string): Promise<MediaDetail> {
-  const url = `${GBOOKS_BASE}/${id}`;
+  const url = `${GBOOKS_BASE}/${id}${keyParam().replace("&", "?")}`;
 
   const response = await throttledFetch(url);
   if (!response.ok) {

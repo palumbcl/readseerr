@@ -13,6 +13,18 @@ export interface MediaResult {
   type: MediaType;
   publisher: string | null;
   author: string | null;
+  /** Number of volumes (manga) or issues (comics), when known */
+  volumeCount?: number | null;
+}
+
+/** One page of results from a source, as returned by /api/search */
+export interface SearchPage {
+  results: MediaResult[];
+  hasMore: boolean;
+  /** Total number of pages, when the source reports it (lets the client fetch pages in parallel) */
+  totalPages?: number;
+  /** Total number of matches reported by the source, before any local filtering */
+  total?: number;
 }
 
 /** Full details returned by /api/details */
@@ -41,6 +53,10 @@ export interface RequestPayload {
   title: string;
   coverUrl?: string;
   volumes?: number[];
+  /** Métadonnées affichées dans la notification Discord (non stockées) */
+  year?: number | null;
+  publisher?: string | null;
+  author?: string | null;
 }
 
 /** POST /api/request response */
