@@ -221,6 +221,9 @@ async function runSync(): Promise<LibrarySyncState> {
       sync.rerunRequested = false;
       syncState.seriesCount = await refreshLibraryCache();
       syncState.lastFulfilled = await reconcileOpenRequests();
+      // Import dynamique : follows.ts dépend lui-même de ce module
+      const { notifyFollowedLibraryUpdates } = await import("@/lib/follows");
+      await notifyFollowedLibraryUpdates();
       syncState.lastSyncAt = new Date().toISOString();
       syncState.lastError = null;
     } while (sync.rerunRequested);
@@ -266,6 +269,9 @@ export async function getDetailAvailability(
     findLibrarySeries(index, [result.title, ...(result.altTitles ?? [])], result.year);
 
   const mine = media?.requests.find((r) => r.userId === userId) ?? null;
+  const follow = media
+    ? await prisma.follow.findUnique({ where: { userId_mediaId: { userId, mediaId: media.id } } })
+    : null;
   const otherRequests =
     media?.requests.filter((r) => r.userId !== userId && OPEN_REQUEST_STATUSES.includes(r.status)).length ?? 0;
 
@@ -292,5 +298,6 @@ export async function getDetailAvailability(
         }
       : null,
     otherRequests,
+    follow: follow ? { autoRequest: follow.autoRequest } : null,
   };
 }

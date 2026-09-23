@@ -18,6 +18,7 @@ model User {
   createdAt    DateTime  @default(now())
   requests     Request[]
   handledRequests Request[] @relation("HandledRequests")
+  follows      Follow[]
   accounts     Account[]
   sessions     Session[]
 }
@@ -60,10 +61,12 @@ model Media {
   volumeCount   Int?      // nombre de tomes connu à la source
   status        String    @default("unknown") // unknown | pending | processing | partially_available | available
   komgaSeriesId String?
+  libraryBooksCount Int?  // tomes vus dans Komga au dernier passage (détection des nouveaux tomes des séries suivies)
   availableAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   requests      Request[]
+  follows       Follow[]
 
   @@unique([mediaType, externalId])
   @@index([status])
@@ -91,6 +94,20 @@ model Request {
   @@index([userId])
   @@index([mediaId])
   @@index([status])
+}
+
+/// Série suivie par un lecteur : notification des nouveaux tomes (Komga) et des nouvelles sorties (comics).
+model Follow {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaId     String
+  media       Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  autoRequest Boolean  @default(false) // demande automatique des nouveaux numéros parus
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, mediaId])
+  @@index([mediaId])
 }
 
 /// Copie locale des séries Komga, rafraîchie par la synchronisation (badges de disponibilité).

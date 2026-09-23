@@ -51,6 +51,21 @@ export interface DetailAvailability {
   } | null;
   /** Demandes en cours d'autres utilisateurs */
   otherRequests: number;
+  /** Suivi de la série par l'utilisateur (null s'il ne la suit pas) */
+  follow: { autoRequest: boolean } | null;
+}
+
+/** Série suivie, pour la page « Mes demandes » */
+export interface FollowedSeries {
+  mediaType: MediaType;
+  externalId: string;
+  title: string;
+  coverUrl: string | null;
+  status: string;
+  libraryBooksCount: number | null;
+  volumeCount: number | null;
+  autoRequest: boolean;
+  followedAt: string;
 }
 
 /** One page of results from a source, as returned by /api/search */

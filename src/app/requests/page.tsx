@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import RequestHistory from "@/components/RequestHistory";
+import FollowedSeries from "@/components/FollowedSeries";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function RequestsPage() {
@@ -36,6 +37,10 @@ export default function RequestsPage() {
           </p>
         </div>
 
+        <h2 className="section-title">Séries suivies</h2>
+        <FollowedSeries />
+
+        <h2 className="section-title">Historique des demandes</h2>
         <RequestHistory />
       </div>
     </div>

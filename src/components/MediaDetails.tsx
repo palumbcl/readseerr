@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { DetailAvailability, MediaDetail } from "@/lib/types";
 import AvailabilityBadge from "./AvailabilityBadge";
 import RequestButton from "./RequestButton";
+import FollowButton from "./FollowButton";
 
 interface MediaDetailsProps {
   detail: MediaDetail;
@@ -158,6 +159,9 @@ export default function MediaDetails({ detail, state }: MediaDetailsProps) {
 
           {/* Request Button */}
           <RequestButton media={detail} state={state} />
+
+          {/* Suivi de la série (nouveaux tomes / numéros) */}
+          {state && <FollowButton media={detail} initialFollow={state.follow} />}
         </div>
       </div>
     </div>

@@ -197,3 +197,17 @@ export async function getRecentComicVolumes(limit = 20, days = 21): Promise<Medi
       volumeCount: vol.count_of_issues || null,
     }));
 }
+
+/** Nombre de numéros actuel de plusieurs séries (1 appel ComicVine par tranche de 100). */
+export async function getComicIssueCounts(ids: string[]): Promise<Map<string, number>> {
+  const apiKey = getApiKey();
+  const counts = new Map<string, number>();
+
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100);
+    const url = `${COMICVINE_BASE}/volumes/?api_key=${apiKey}&format=json&limit=100&filter=id:${chunk.join("|")}&field_list=id,count_of_issues`;
+    const volumes: { id: number; count_of_issues: number }[] = (await (await fetchWithRetry(url)).json()).results ?? [];
+    for (const vol of volumes) counts.set(String(vol.id), vol.count_of_issues);
+  }
+  return counts;
+}

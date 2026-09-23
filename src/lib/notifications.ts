@@ -55,3 +55,59 @@ export async function sendRequestStatusEmail({
 
   return sendEmail({ to: user.email, subject: SUBJECTS[kind], text, html });
 }
+
+/**
+ * Nouveautés d'une série suivie : tomes arrivés dans la bibliothèque, ou numéros parus
+ * (avec, le cas échéant, la demande créée automatiquement).
+ */
+export async function sendFollowUpdateEmail({
+  kind,
+  user,
+  title,
+  coverUrl,
+  count,
+  libraryUrl,
+  autoRequested = false,
+}: {
+  kind: "library" | "release";
+  user: { name: string; email: string | null };
+  title: string;
+  coverUrl?: string | null;
+  count: number;
+  libraryUrl?: string | null;
+  autoRequested?: boolean;
+}): Promise<boolean> {
+  if (!user.email) return false;
+
+  const plural = count > 1;
+  const subject =
+    kind === "library"
+      ? `${title} : ${count} nouveau${plural ? "x" : ""} tome${plural ? "s" : ""} disponible${plural ? "s" : ""}`
+      : `${title} : ${count} nouveau${plural ? "x" : ""} numéro${plural ? "s" : ""} paru${plural ? "s" : ""}`;
+
+  const paragraphs =
+    kind === "library"
+      ? [
+          `${count} nouveau${plural ? "x" : ""} tome${plural ? "s" : ""} de "${title}", une série que vous suivez, ${plural ? "sont" : "est"} arrivé${plural ? "s" : ""} dans la librairie.`,
+          "Bonne lecture !",
+        ]
+      : [
+          `${count} nouveau${plural ? "x" : ""} numéro${plural ? "s" : ""} de "${title}", une série que vous suivez, ${plural ? "sont" : "est"} paru${plural ? "s" : ""}.`,
+          autoRequested
+            ? "Une demande a été créée automatiquement : vous serez prévenu dès que ces numéros seront disponibles."
+            : "Vous pouvez les demander depuis la fiche de la série.",
+        ];
+
+  const link = kind === "library" && libraryUrl ? libraryUrl : getRequestsLink();
+  const linkLabel = kind === "library" && libraryUrl ? "Lire dans Komga" : "Suivre vos demandes";
+  const text = `Bonjour ${user.name},\n\n${paragraphs.join("\n\n")}\n\n${link ? `${linkLabel} : ${link}\n\n` : ""}L'équipe ReadSeerr`;
+  const html = [
+    coverUrl ? `<p><img src="${escapeHtml(coverUrl)}" alt="" width="160" style="border-radius:8px" /></p>` : "",
+    `<p>Bonjour ${escapeHtml(user.name)},</p>`,
+    ...paragraphs.map((p) => `<p>${escapeHtml(p)}</p>`),
+    link ? `<p><a href="${escapeHtml(link)}">${linkLabel}</a></p>` : "",
+    "<p>L'équipe ReadSeerr</p>",
+  ].join("");
+
+  return sendEmail({ to: user.email, subject, text, html });
+}

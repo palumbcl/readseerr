@@ -290,3 +290,30 @@ export async function getNewManga(limit = 20): Promise<MediaResult[]> {
   // AniList compare des dates approximatives : on écarte ce qui a une année de début plus ancienne
   return data.Page.media.map(mediaToResult).filter((m) => !m.year || m.year >= since.getFullYear());
 }
+
+const VOLUME_COUNTS_QUERY = `
+query ($ids: [Int], $perPage: Int) {
+  Page(page: 1, perPage: $perPage) {
+    media(id_in: $ids, type: MANGA) { id volumes }
+  }
+}
+`;
+
+/**
+ * Nombre de tomes connu d'AniList pour plusieurs séries (1 appel par tranche de 50).
+ * AniList ne le renseigne en général qu'une fois la série terminée : null pour les séries en cours.
+ */
+export async function getMangaVolumeCounts(ids: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50).map((id) => parseInt(id, 10));
+    const data = await queryAniList<{ Page: { media: { id: number; volumes: number | null }[] } }>(VOLUME_COUNTS_QUERY, {
+      ids: chunk,
+      perPage: 50,
+    });
+    for (const media of data.Page.media) {
+      if (media.volumes) counts.set(String(media.id), media.volumes);
+    }
+  }
+  return counts;
+}

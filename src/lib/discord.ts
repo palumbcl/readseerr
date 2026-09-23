@@ -129,6 +129,7 @@ export async function sendDiscordNotification({
   userName,
   previousRequests = [],
   komgaMatches = null,
+  automatic = false,
 }: {
   title: string;
   mediaType: MediaType;
@@ -142,6 +143,8 @@ export async function sendDiscordNotification({
   previousRequests?: PreviousRequest[];
   /** null = Komga non configuré ou injoignable */
   komgaMatches?: KomgaSeriesMatch[] | null;
+  /** Demande créée par le suivi de série (nouveaux numéros parus) */
+  automatic?: boolean;
 }) {
   const { label: typeLabel, color } = TYPE_STYLES[mediaType] ?? TYPE_STYLES.comic;
 
@@ -198,9 +201,11 @@ export async function sendDiscordNotification({
   await postToDiscord({
     embeds: [
       {
-        title: `Nouvelle demande : ${title}`.slice(0, 256),
+        title: `${automatic ? "Demande automatique" : "Nouvelle demande"} : ${title}`.slice(0, 256),
         url: sourceLink?.url ?? appLink,
-        description: `Une nouvelle demande a été ajoutée à la liste de souhaits.`,
+        description: automatic
+          ? "De nouveaux numéros sont parus pour une série suivie : demande créée automatiquement."
+          : "Une nouvelle demande a été ajoutée à la liste de souhaits.",
         color,
         fields,
         ...(imageUrl && { image: { url: imageUrl } }),
