@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendDiscordRequestChangeNotification } from "@/lib/discord";
 import { refreshMediaStatus } from "@/lib/media";
+import { getCurrentUser } from "@/lib/permissions";
+import { getQuotaStatus, quotaError, requestWeight } from "@/lib/quota";
 import { parseJsonArray } from "@/lib/titles";
 import type { MediaType } from "@/lib/types";
 
@@ -61,6 +63,14 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     }
 
     const sortedVolumes = [...new Set(volumes as number[])].sort((a, b) => a - b);
+
+    // Seuls les tomes ajoutés consomment du quota
+    const extra = requestWeight(sortedVolumes) - requestWeight(existing.volumes);
+    const user = extra > 0 ? await getCurrentUser() : null;
+    const quotaMessage = user ? quotaError(await getQuotaStatus(user), extra) : null;
+    if (quotaMessage) {
+      return NextResponse.json({ error: quotaMessage }, { status: 403 });
+    }
 
     const updated = await prisma.request.update({
       where: { id },

@@ -15,6 +15,7 @@ model User {
   image        String?
   passwordHash String?
   role         String    @default("user") // "user" | "admin"
+  quotaLimit   Int?      // tomes par période : null = quota par défaut, -1 = illimité
   createdAt    DateTime  @default(now())
   requests     Request[]
   handledRequests Request[] @relation("HandledRequests")
@@ -147,6 +148,13 @@ model IssueComment {
   createdAt DateTime @default(now())
 
   @@index([issueId])
+}
+
+/// Réglages de l'application modifiables depuis l'interface (valeur JSON).
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 /// Copie locale des séries Komga, rafraîchie par la synchronisation (badges de disponibilité).

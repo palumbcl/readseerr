@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LoadingSpinner from "./LoadingSpinner";
 import VolumeSelector from "./VolumeSelector";
-import type { DetailAvailability, MediaDetail, RequestPayload } from "@/lib/types";
+import type { DetailAvailability, MediaDetail, QuotaStatus, RequestPayload } from "@/lib/types";
 
 interface RequestButtonProps {
   media: MediaDetail;
@@ -26,6 +26,18 @@ export default function RequestButton({ media, state }: RequestButtonProps) {
   const [requestStatus, setRequestStatus] = useState(openRequest?.status ?? "pending");
   const [requestedVolumes, setRequestedVolumes] = useState<number[] | undefined>(openRequest?.volumes ?? undefined);
   const [actionError, setActionError] = useState("");
+  const [quota, setQuota] = useState<QuotaStatus | null>(null);
+
+  // Solde recalculé après chaque demande / modification
+  const loadQuota = () => {
+    fetch("/api/quota")
+      .then((response) => (response.ok ? response.json() : null))
+      .then(setQuota)
+      .catch(() => setQuota(null));
+  };
+  useEffect(loadQuota, []);
+
+  const quotaReached = quota?.remaining === 0;
 
   const ownedVolumes = state?.library?.volumes ?? null;
   const isFullyAvailable = state?.availability?.status === "available";
@@ -71,6 +83,7 @@ export default function RequestButton({ media, state }: RequestButtonProps) {
         setRequestStatus("pending");
         setRequestedVolumes(volumes);
         setStatus("success");
+        loadQuota();
       } else {
         setStatus("error");
         setErrorMsg(data.message || data.error || "Erreur inconnue");
@@ -94,6 +107,7 @@ export default function RequestButton({ media, state }: RequestButtonProps) {
       setRequestId(null);
       setRequestedVolumes(undefined);
       setStatus("idle");
+      loadQuota();
     } catch (error) {
       setActionError(error instanceof Error && error.message ? error.message : "Impossible d'annuler la demande.");
       setStatus("success");
@@ -114,6 +128,7 @@ export default function RequestButton({ media, state }: RequestButtonProps) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       setRequestedVolumes(selectedVolumes);
+      loadQuota();
     } catch (error) {
       setActionError(error instanceof Error && error.message ? error.message : "Impossible de modifier la demande.");
     }
@@ -145,7 +160,7 @@ export default function RequestButton({ media, state }: RequestButtonProps) {
       {status === "idle" && (
         <div>
           <div className="request-followup-actions" style={{ marginTop: 0 }}>
-            <button className="btn btn-primary btn-lg" onClick={handleClick}>
+            <button className="btn btn-primary btn-lg" onClick={handleClick} disabled={quotaReached}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
@@ -155,6 +170,17 @@ export default function RequestButton({ media, state }: RequestButtonProps) {
             </button>
             {isPartial && libraryLink}
           </div>
+          {quota && quota.limit !== null && (
+            <p className={`request-note ${quotaReached ? "over-quota" : ""}`}>
+              {quotaReached
+                ? `Quota atteint (${quota.limit} tomes tous les ${quota.days} jours)${
+                    quota.resetsAt
+                      ? ` : de nouveaux tomes pourront être demandés à partir du ${new Date(quota.resetsAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`
+                      : ""
+                  }.`
+                : `Il vous reste ${quota.remaining} tome${(quota.remaining ?? 0) > 1 ? "s" : ""} à demander sur ${quota.days} jours (quota : ${quota.limit}).`}
+            </p>
+          )}
           {declined && (
             <p className="request-note">
               Votre précédente demande a été refusée
@@ -211,6 +237,7 @@ export default function RequestButton({ media, state }: RequestButtonProps) {
         <VolumeSelector
           volumes={media.volumes}
           ownedVolumes={ownedVolumes}
+          maxSelectable={quota?.remaining ?? null}
           onConfirm={(selected) => submitRequest(selected)}
           onClose={() => setStatus("idle")}
         />
@@ -221,6 +248,8 @@ export default function RequestButton({ media, state }: RequestButtonProps) {
           volumes={media.volumes}
           ownedVolumes={ownedVolumes}
           initialSelected={requestedVolumes}
+          // Les tomes déjà demandés sont comptés dans le solde : ils restent sélectionnables
+          maxSelectable={quota?.remaining != null ? quota.remaining + (requestedVolumes?.length || 1) : null}
           confirmLabel="Enregistrer"
           onConfirm={updateVolumes}
           onClose={() => setStatus("success")}

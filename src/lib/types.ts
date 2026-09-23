@@ -208,3 +208,21 @@ export interface IssueDetail extends IssueRecord {
   /** L'utilisateur courant peut résoudre / rouvrir (auteur ou admin) */
   canManage: boolean;
 }
+
+/** Quota par défaut : `limit` tomes tous les `days` jours (null = illimité) */
+export interface QuotaSettings {
+  limit: number | null;
+  days: number;
+}
+
+/** Solde de l'utilisateur connecté (GET /api/quota) */
+export interface QuotaStatus {
+  /** null = illimité */
+  limit: number | null;
+  days: number;
+  used: number;
+  remaining: number | null;
+  /** Date à laquelle au moins un tome se libère, si le quota est atteint */
+  resetsAt: string | null;
+  source: "default" | "user" | "admin";
+}

@@ -11,6 +11,8 @@ interface VolumeSelectorProps {
   initialSelected?: number[];
   /** Tomes déjà présents dans la bibliothèque : affichés mais non sélectionnables. */
   ownedVolumes?: number[] | null;
+  /** Nombre maximum de tomes sélectionnables (quota restant), illimité si absent */
+  maxSelectable?: number | null;
   confirmLabel?: string;
 }
 
@@ -20,6 +22,7 @@ export default function VolumeSelector({
   onClose,
   initialSelected,
   ownedVolumes,
+  maxSelectable = null,
   confirmLabel = "Demander",
 }: VolumeSelectorProps) {
   const owned = new Set(ownedVolumes ?? []);
@@ -28,6 +31,7 @@ export default function VolumeSelector({
     new Set((initialSelected ?? []).filter((n) => !owned.has(n)))
   );
   const allSelected = selectable.length > 0 && selected.size === selectable.length;
+  const overQuota = maxSelectable !== null && selected.size > maxSelectable;
 
   const toggleVolume = (num: number) => {
     if (owned.has(num)) return;
@@ -61,6 +65,12 @@ export default function VolumeSelector({
         {owned.size > 0 && (
           <p className="modal-hint">
             {owned.size} tome{owned.size > 1 ? "s sont" : " est"} déjà dans la bibliothèque.
+          </p>
+        )}
+        {maxSelectable !== null && (
+          <p className={`modal-hint ${overQuota ? "over-quota" : ""}`}>
+            Quota : vous pouvez demander encore {maxSelectable} tome{maxSelectable > 1 ? "s" : ""}
+            {overQuota ? ` (${selected.size} sélectionnés)` : ""}.
           </p>
         )}
 
@@ -106,7 +116,7 @@ export default function VolumeSelector({
           <button
             className="btn btn-primary"
             onClick={handleConfirm}
-            disabled={selected.size === 0}
+            disabled={selected.size === 0 || overQuota}
           >
             {confirmLabel} {selected.size > 0 ? `(${selected.size})` : ""}
           </button>

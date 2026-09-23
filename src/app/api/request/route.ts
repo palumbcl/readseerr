@@ -5,6 +5,7 @@ import { sendDiscordNotification } from "@/lib/discord";
 import { fetchKomgaBookNumbers, findKomgaSeries } from "@/lib/komga";
 import { findMediaLibrarySeries, OPEN_REQUEST_STATUSES, refreshMediaStatus, upsertMedia } from "@/lib/media";
 import { libraryStatus } from "@/lib/library";
+import { getQuotaStatus, quotaError, requestWeight } from "@/lib/quota";
 import type { RequestPayload } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -28,6 +29,12 @@ export async function POST(request: NextRequest) {
         { error: "mediaType, externalId, and title are required." },
         { status: 400 }
       );
+    }
+
+    // Quota de tomes sur la période glissante (les admins n'en ont pas)
+    const quotaMessage = quotaError(await getQuotaStatus(user), requestWeight(volumes));
+    if (quotaMessage) {
+      return NextResponse.json({ error: quotaMessage }, { status: 403 });
     }
 
     const media = await upsertMedia(body);

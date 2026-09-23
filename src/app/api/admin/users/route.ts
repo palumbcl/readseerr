@@ -16,6 +16,7 @@ export async function GET() {
           name: true,
           email: true,
           role: true,
+          quotaLimit: true,
           createdAt: true,
           passwordHash: true,
           accounts: { select: { provider: true } },
