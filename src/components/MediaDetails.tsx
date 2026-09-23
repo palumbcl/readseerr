@@ -1,14 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import type { MediaDetail } from "@/lib/types";
+import type { DetailAvailability, MediaDetail } from "@/lib/types";
+import AvailabilityBadge from "./AvailabilityBadge";
 import RequestButton from "./RequestButton";
 
 interface MediaDetailsProps {
   detail: MediaDetail;
+  state: DetailAvailability | null;
 }
 
-export default function MediaDetails({ detail }: MediaDetailsProps) {
+export default function MediaDetails({ detail, state }: MediaDetailsProps) {
   const router = useRouter();
   const bgImage = detail.bannerUrl || detail.coverUrl;
 
@@ -65,7 +67,7 @@ export default function MediaDetails({ detail }: MediaDetailsProps) {
           {/* Meta pills */}
           <div className="details-meta">
             <span className={`media-card-badge ${detail.type}`} style={{ position: "static" }}>
-              {detail.type === "manga" ? "🇯🇵 Manga" : detail.type === "comic" ? "🇺🇸 Comic" : "🇫🇷 BD"}
+              {detail.type === "manga" ? "🇯🇵 Manga" : "📘 Comic / BD"}
             </span>
 
             {yearLabel && (
@@ -123,8 +125,39 @@ export default function MediaDetails({ detail }: MediaDetailsProps) {
             <p className="details-description">{detail.description}</p>
           )}
 
+          {/* Bibliothèque et demandes des autres lecteurs */}
+          {state && (state.availability || state.otherRequests > 0) && (
+            <div className="details-library">
+              {state.availability && (
+                <AvailabilityBadge
+                  availability={state.availability}
+                  volumeCount={detail.volumes.length || detail.volumeCount}
+                  inline
+                />
+              )}
+              {state.library && (
+                <span>
+                  {state.library.booksCount} tome{state.library.booksCount > 1 ? "s" : ""} dans{" "}
+                  {state.library.url ? (
+                    <a href={state.library.url} target="_blank" rel="noopener noreferrer">
+                      {state.library.name}
+                    </a>
+                  ) : (
+                    state.library.name
+                  )}
+                </span>
+              )}
+              {state.otherRequests > 0 && (
+                <span>
+                  · Déjà demandé par {state.otherRequests} autre{state.otherRequests > 1 ? "s" : ""} lecteur
+                  {state.otherRequests > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Request Button */}
-          <RequestButton media={detail} />
+          <RequestButton media={detail} state={state} />
         </div>
       </div>
     </div>

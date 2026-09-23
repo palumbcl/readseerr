@@ -14,16 +14,6 @@ const nextConfig: NextConfig = {
         hostname: "comicvine.gamespot.com",
         pathname: "/a/uploads/**",
       },
-      {
-        protocol: "https",
-        hostname: "books.google.com",
-        pathname: "/books/content/**",
-      },
-      {
-        protocol: "https",
-        hostname: "covers.openlibrary.org",
-        pathname: "/b/**",
-      },
     ],
   },
 };

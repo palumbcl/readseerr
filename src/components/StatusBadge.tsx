@@ -5,20 +5,24 @@ interface StatusBadgeProps {
 }
 
 const statusLabels: Record<string, string> = {
-  pending: "En attente d'ajout",
-  sent: "Envoyée",
-  success: "Disponible",
-  error: "Erreur",
+  pending: "En attente",
+  approved: "Acceptée",
+  declined: "Refusée",
+  available: "Disponible",
+};
+
+const statusIcons: Record<string, string> = {
+  pending: "◷",
+  approved: "→",
+  declined: "✕",
+  available: "●",
 };
 
 export default function StatusBadge({ status }: StatusBadgeProps) {
-  const label = statusLabels[status] || status;
-  const dotClass = status === "success" ? "●" : status === "error" ? "✕" : status === "pending" ? "◷" : "→";
-
   return (
     <span className={`status-badge ${status}`}>
-      <span>{dotClass}</span>
-      {label}
+      <span>{statusIcons[status] ?? "•"}</span>
+      {statusLabels[status] || status}
     </span>
   );
 }

@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/permissions";
 import { sendDiscordNotification } from "@/lib/discord";
-import { findKomgaSeries } from "@/lib/komga";
+import { fetchKomgaBookNumbers, findKomgaSeries } from "@/lib/komga";
+import { findMediaLibrarySeries, OPEN_REQUEST_STATUSES, refreshMediaStatus, upsertMedia } from "@/lib/media";
+import { libraryStatus } from "@/lib/library";
 import type { RequestPayload } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   // Verify authentication
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return NextResponse.json(
       { error: "Vous devez être connecté pour faire une demande." },
       { status: 401 }
@@ -17,7 +19,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: RequestPayload = await request.json();
-    const { mediaType, externalId, title, coverUrl, volumes, year, publisher, author } = body;
+    const { mediaType, externalId, title, coverUrl, year, publisher, author } = body;
+    const volumes = body.volumes?.length ? [...new Set(body.volumes)].sort((a, b) => a - b) : undefined;
 
     // Validation
     if (!mediaType || !externalId || !title) {
@@ -27,10 +30,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const media = await upsertMedia(body);
+
+    // Une seule demande en cours par utilisateur et par œuvre : on modifie la demande existante
+    const ownOpenRequest = await prisma.request.findFirst({
+      where: { mediaId: media.id, userId: user.id, status: { in: OPEN_REQUEST_STATUSES } },
+    });
+    if (ownOpenRequest) {
+      return NextResponse.json(
+        { error: "Vous avez déjà une demande en cours pour cette œuvre : modifiez-la depuis « Mes demandes »." },
+        { status: 409 }
+      );
+    }
+
+    // Rien à demander si tout est déjà dans la bibliothèque
+    const series = await findMediaLibrarySeries(media);
+    if (series) {
+      const bookNumbers = volumes ? await fetchKomgaBookNumbers(series.id) : null;
+      const alreadyOwned = volumes
+        ? bookNumbers !== null && volumes.every((v) => bookNumbers.includes(v))
+        : libraryStatus(series, media.volumeCount).status === "available";
+      if (alreadyOwned) {
+        return NextResponse.json(
+          { error: volumes ? "Ces tomes sont déjà disponibles dans la bibliothèque." : "Cette œuvre est déjà disponible dans la bibliothèque." },
+          { status: 409 }
+        );
+      }
+    }
+
     // Détection de doublons pour l'admin : demandes existantes sur la même œuvre + présence dans Komga
     const [previousRequests, komgaMatches] = await Promise.all([
       prisma.request.findMany({
-        where: { mediaType, externalId },
+        where: { mediaId: media.id },
         include: { user: { select: { name: true, email: true } } },
         orderBy: { createdAt: "desc" },
       }),
@@ -40,16 +71,17 @@ export async function POST(request: NextRequest) {
     // Create request record in DB
     const dbRequest = await prisma.request.create({
       data: {
-        userId: session.user.id,
+        userId: user.id,
+        mediaId: media.id,
         mediaType,
         externalId,
         title,
         coverUrl: coverUrl || null,
         volumes: volumes ? JSON.stringify(volumes) : null,
         status: "pending",
-        targetService: "manual",
       },
     });
+    await refreshMediaStatus(media.id);
 
     // Notification Discord pour l'admin
     await sendDiscordNotification({
@@ -61,7 +93,7 @@ export async function POST(request: NextRequest) {
       year,
       publisher,
       author,
-      userName: session.user.name || session.user.email,
+      userName: user.name || user.email,
       previousRequests: previousRequests.map((req) => ({
         userName: req.user.name || req.user.email,
         status: req.status,
@@ -89,14 +121,14 @@ export async function POST(request: NextRequest) {
 
 // GET: Fetch request history for the current user
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   }
 
   try {
     const requests = await prisma.request.findMany({
-      where: { userId: session.user.id },
+      where: { userId: user.id },
       orderBy: { createdAt: "desc" },
       take: 50,
     });

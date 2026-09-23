@@ -3,17 +3,16 @@ import type { KomgaSeriesMatch } from "@/lib/komga";
 
 const TYPE_STYLES: Record<MediaType, { label: string; color: number }> = {
   manga: { label: "🇯🇵 Manga", color: 0xe11d48 },
-  comic: { label: "🇺🇸 Comic", color: 0x2563eb },
-  bd: { label: "🇫🇷 BD", color: 0x6366f1 },
+  comic: { label: "📘 Comic / BD", color: 0x2563eb },
 };
 
 const AVAILABLE_COLOR = 0x22c55e;
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "en attente",
-  sent: "envoyée",
-  success: "disponible",
-  error: "en erreur",
+  approved: "acceptée",
+  declined: "refusée",
+  available: "disponible",
 };
 
 interface EmbedField {
@@ -30,28 +29,28 @@ export interface PreviousRequest {
 }
 
 /** Lien vers la fiche de l'œuvre chez la source d'origine. */
-function getSourceLink(mediaType: MediaType, externalId: string): { name: string; url: string } | null {
+export function getSourceLink(mediaType: MediaType, externalId: string): { name: string; url: string } | null {
   switch (mediaType) {
     case "manga":
       return { name: "AniList", url: `https://anilist.co/manga/${externalId}` };
     case "comic":
       return { name: "ComicVine", url: `https://comicvine.gamespot.com/volume/4050-${externalId}/` };
-    case "bd":
-      return externalId.startsWith("ol-")
-        ? { name: "Open Library", url: `https://openlibrary.org/works/${externalId.slice(3)}` }
-        : { name: "Google Books", url: `https://books.google.com/books?id=${encodeURIComponent(externalId)}` };
     default:
       return null;
   }
 }
 
+function getAppUrl(): string | undefined {
+  return (process.env.NEXTAUTH_URL || process.env.AUTH_URL)?.replace(/\/$/, "");
+}
+
 function getAppLink(mediaType: MediaType, externalId: string): string | undefined {
-  const appUrl = (process.env.NEXTAUTH_URL || process.env.AUTH_URL)?.replace(/\/$/, "");
+  const appUrl = getAppUrl();
   return appUrl ? `${appUrl}/details/${mediaType}/${encodeURIComponent(externalId)}` : undefined;
 }
 
 /** Ouvre la page de recherche Prowlarr pré-remplie avec le titre. */
-function getProwlarrSearchLink(title: string): string | undefined {
+export function getProwlarrSearchLink(title: string): string | undefined {
   const prowlarrUrl = process.env.PROWLARR_URL?.replace(/\/$/, "");
   return prowlarrUrl ? `${prowlarrUrl}/search?query=${encodeURIComponent(title)}` : undefined;
 }
@@ -144,7 +143,7 @@ export async function sendDiscordNotification({
   /** null = Komga non configuré ou injoignable */
   komgaMatches?: KomgaSeriesMatch[] | null;
 }) {
-  const { label: typeLabel, color } = TYPE_STYLES[mediaType] ?? TYPE_STYLES.bd;
+  const { label: typeLabel, color } = TYPE_STYLES[mediaType] ?? TYPE_STYLES.comic;
 
   const appLink = getAppLink(mediaType, externalId);
   const sourceLink = getSourceLink(mediaType, externalId);
@@ -183,8 +182,10 @@ export async function sendDiscordNotification({
     fields.push({ name: "📚 Peut-être déjà dans Komga", value: truncate(lines.join("\n")), inline: false });
   }
 
+  const adminLink = getAppUrl() && `${getAppUrl()}/admin`;
   const links = [
     prowlarrLink && `[🔎 Chercher sur Prowlarr](${prowlarrLink})`,
+    adminLink && `[✅ Accepter / refuser](${adminLink})`,
     appLink && `[Fiche ReadSeerr](${appLink})`,
     sourceLink && `[Voir sur ${sourceLink.name}](${sourceLink.url})`,
   ].filter(Boolean);
@@ -228,7 +229,7 @@ export async function sendDiscordAvailableNotification({
   userNames: string[];
   emailedCount: number;
 }) {
-  const { label: typeLabel } = TYPE_STYLES[mediaType] ?? TYPE_STYLES.bd;
+  const { label: typeLabel } = TYPE_STYLES[mediaType] ?? TYPE_STYLES.comic;
   const thumbnailUrl = toHttpsUrl(coverUrl);
 
   await postToDiscord({
@@ -246,6 +247,63 @@ export async function sendDiscordAvailableNotification({
             inline: true,
           },
         ],
+        ...(thumbnailUrl && { thumbnail: { url: thumbnailUrl } }),
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  });
+}
+
+const CANCELLED_COLOR = 0x6b7280;
+const UPDATED_COLOR = 0xf59e0b;
+
+/** Prévient l'admin qu'un utilisateur a modifié ou retiré sa demande. */
+export async function sendDiscordRequestChangeNotification({
+  action,
+  title,
+  mediaType,
+  coverUrl,
+  previousVolumes,
+  volumes,
+  userName,
+}: {
+  action: "updated" | "cancelled";
+  title: string;
+  mediaType: MediaType;
+  coverUrl?: string | null;
+  previousVolumes?: number[] | null;
+  volumes?: number[] | null;
+  userName?: string | null;
+}) {
+  const { label: typeLabel } = TYPE_STYLES[mediaType] ?? TYPE_STYLES.comic;
+  const thumbnailUrl = toHttpsUrl(coverUrl);
+  const describeVolumes = (list?: number[] | null) =>
+    list && list.length > 0 ? truncate(formatVolumes(list)) : "Tous / non précisé";
+
+  const fields: EmbedField[] = [
+    { name: "Type", value: typeLabel, inline: true },
+    { name: "Utilisateur", value: userName || "Utilisateur inconnu", inline: true },
+  ];
+
+  if (action === "updated") {
+    fields.push(
+      { name: "Avant", value: describeVolumes(previousVolumes), inline: false },
+      { name: "Après", value: describeVolumes(volumes), inline: false }
+    );
+  } else {
+    fields.push({ name: "Tomes qui étaient demandés", value: describeVolumes(previousVolumes), inline: false });
+  }
+
+  await postToDiscord({
+    embeds: [
+      {
+        title: `${action === "updated" ? "Demande modifiée" : "Demande retirée"} : ${title}`.slice(0, 256),
+        description:
+          action === "updated"
+            ? "L'utilisateur a changé les tomes demandés."
+            : "L'utilisateur a retiré sa demande, inutile de la traiter.",
+        color: action === "updated" ? UPDATED_COLOR : CANCELLED_COLOR,
+        fields,
         ...(thumbnailUrl && { thumbnail: { url: thumbnailUrl } }),
         timestamp: new Date().toISOString(),
       },

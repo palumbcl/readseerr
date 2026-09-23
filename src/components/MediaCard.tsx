@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import AvailabilityBadge from "./AvailabilityBadge";
 import type { MediaResult } from "@/lib/types";
 
 interface MediaCardProps {
@@ -34,8 +35,12 @@ export default function MediaCard({ media }: MediaCardProps) {
       )}
 
       <span className={`media-card-badge ${media.type}`}>
-        {media.type === "manga" ? "Manga" : media.type === "comic" ? "Comic" : "BD"}
+        {media.type === "manga" ? "Manga" : "Comic / BD"}
       </span>
+
+      {media.availability && (
+        <AvailabilityBadge availability={media.availability} volumeCount={media.volumeCount} />
+      )}
 
       <div className="media-card-overlay">
         <div className="media-card-title">{media.title}</div>

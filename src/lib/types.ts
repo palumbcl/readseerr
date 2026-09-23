@@ -2,7 +2,7 @@
    ReadSeerr — Shared Types
    =========================== */
 
-export type MediaType = "manga" | "comic" | "bd";
+export type MediaType = "manga" | "comic";
 
 /** Unified search result returned by /api/search */
 export interface MediaResult {
@@ -15,6 +15,42 @@ export interface MediaResult {
   author: string | null;
   /** Number of volumes (manga) or issues (comics), when known */
   volumeCount?: number | null;
+  /** Other known titles (romaji, English…), used to match the Komga library */
+  altTitles?: string[];
+  /** Library / request state, added by the API (never cached) */
+  availability?: Availability | null;
+}
+
+/** Statut agrégé d'une œuvre, affiché en badge */
+export type AvailabilityStatus = "available" | "partially_available" | "processing" | "pending";
+
+export interface Availability {
+  status: AvailabilityStatus;
+  /** Nombre de tomes présents dans Komga */
+  booksInLibrary?: number;
+  librarySeriesUrl?: string | null;
+}
+
+export type RequestStatus = "pending" | "approved" | "declined" | "available";
+
+/** État de l'œuvre pour la page détail : bibliothèque, demande de l'utilisateur, autres demandes */
+export interface DetailAvailability {
+  availability: Availability | null;
+  library: {
+    name: string;
+    url: string | null;
+    booksCount: number;
+    /** Numéros des tomes présents, null si Komga est injoignable */
+    volumes: number[] | null;
+  } | null;
+  myRequest: {
+    id: string;
+    status: RequestStatus;
+    volumes: number[] | null;
+    declineReason: string | null;
+  } | null;
+  /** Demandes en cours d'autres utilisateurs */
+  otherRequests: number;
 }
 
 /** One page of results from a source, as returned by /api/search */
@@ -53,8 +89,10 @@ export interface RequestPayload {
   title: string;
   coverUrl?: string;
   volumes?: number[];
-  /** Métadonnées affichées dans la notification Discord (non stockées) */
+  altTitles?: string[];
+  volumeCount?: number | null;
   year?: number | null;
+  /** Métadonnées affichées dans la notification Discord (non stockées) */
   publisher?: string | null;
   author?: string | null;
 }
@@ -70,12 +108,23 @@ export interface RequestResponse {
 export interface RequestRecord {
   id: string;
   mediaType: MediaType;
+  externalId: string;
   title: string;
   coverUrl: string | null;
   volumes: string | null;
-  status: string;
-  targetService: "manual" | string;
-  errorMessage: string | null;
+  status: RequestStatus;
+  declineReason: string | null;
   createdAt: string;
-  userName?: string;
+  handledAt: string | null;
+}
+
+/** Demande vue par l'administrateur */
+export interface AdminRequestRecord extends RequestRecord {
+  user: { id: string; name: string; email: string };
+  handledBy: { name: string } | null;
+  library: { name: string; url: string | null; booksCount: number } | null;
+  /** Demandes en cours d'autres utilisateurs sur la même œuvre */
+  otherRequests: number;
+  sourceUrl: string | null;
+  prowlarrUrl: string | null;
 }

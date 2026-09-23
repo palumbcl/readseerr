@@ -15,6 +15,7 @@ async function main() {
         name: "Admin",
         email: "admin@readseerr.local",
         passwordHash,
+        role: "admin",
       },
     });
     console.log("✅ Admin user created (admin@readseerr.local / changeme)");

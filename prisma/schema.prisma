@@ -14,8 +14,10 @@ model User {
   emailVerified DateTime?
   image        String?
   passwordHash String?
+  role         String    @default("user") // "user" | "admin"
   createdAt    DateTime  @default(now())
   requests     Request[]
+  handledRequests Request[] @relation("HandledRequests")
   accounts     Account[]
   sessions     Session[]
 }
@@ -46,21 +48,57 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+/// Une œuvre (série) demandée au moins une fois : porte le statut agrégé de toutes ses demandes.
+model Media {
+  id            String    @id @default(cuid())
+  mediaType     String    // "manga" | "comic" | "bd"
+  externalId    String
+  title         String
+  altTitles     String?   // JSON array : autres titres connus (romaji, anglais…) pour le rapprochement Komga
+  year          Int?
+  coverUrl      String?
+  volumeCount   Int?      // nombre de tomes connu à la source
+  status        String    @default("unknown") // unknown | pending | processing | partially_available | available
+  komgaSeriesId String?
+  availableAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  requests      Request[]
+
+  @@unique([mediaType, externalId])
+  @@index([status])
+}
+
 model Request {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  mediaType     String   // "manga" | "comic" | "bd"
+  user          User      @relation(fields: [userId], references: [id])
+  mediaId       String
+  media         Media     @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  mediaType     String    // "manga" | "comic" | "bd"
   externalId    String
   title         String
   coverUrl      String?
-  volumes       String?  // JSON array string e.g. "[1,2,3]"
-  status        String   @default("pending") // pending | sent | success | error
-  targetService String   // "kaizoku" | "mylar3"
-  errorMessage  String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  volumes       String?   // JSON array string e.g. "[1,2,3]"
+  status        String    @default("pending") // pending | approved | declined | available
+  declineReason String?
+  handledById   String?
+  handledBy     User?     @relation("HandledRequests", fields: [handledById], references: [id], onDelete: SetNull)
+  handledAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([userId])
+  @@index([mediaId])
   @@index([status])
+}
+
+/// Copie locale des séries Komga, rafraîchie par la synchronisation (badges de disponibilité).
+model LibrarySeries {
+  id         String   @id // identifiant Komga
+  name       String
+  titles     String   // JSON array des titres normalisés (titre, nom du dossier, titres alternatifs)
+  year       Int?
+  booksCount Int
+  syncedAt   DateTime @default(now())
 }

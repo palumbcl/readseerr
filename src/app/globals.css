@@ -429,11 +429,6 @@ input {
   color: #93c5fd;
 }
 
-.autocomplete-item-badge.bd {
-  background: rgba(34, 197, 94, 0.15);
-  color: #86efac;
-}
-
 .autocomplete-loading {
   display: flex;
   align-items: center;
@@ -660,11 +655,6 @@ input {
 
 .media-card-badge.comic {
   background: rgba(59, 130, 246, 0.85);
-  color: white;
-}
-
-.media-card-badge.bd {
-  background: rgba(34, 197, 94, 0.85);
   color: white;
 }
 
@@ -1244,19 +1234,19 @@ input {
   color: var(--warning);
 }
 
-.status-badge.success {
-  background: var(--success-bg);
-  color: var(--success);
+.status-badge.approved {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--accent-primary-hover);
 }
 
-.status-badge.error {
+.status-badge.declined {
   background: var(--error-bg);
   color: var(--error);
 }
 
-.status-badge.sent {
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--accent-primary);
+.status-badge.available {
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 /* ---------- Request History Table ---------- */
@@ -1470,4 +1460,336 @@ input {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--bg-hover);
+}
+/* ---------- Request Actions (modifier / retirer) ---------- */
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 0.8rem;
+}
+
+.request-row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.request-followup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ---------- Availability Badge (bibliothèque / demandes) ---------- */
+.availability-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: white;
+  backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-sm);
+}
+
+.availability-badge.inline {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
+  padding: 5px 12px;
+}
+
+.availability-badge.available {
+  background: rgba(34, 197, 94, 0.9);
+}
+
+.availability-badge.partially-available {
+  background: rgba(20, 184, 166, 0.9);
+}
+
+.availability-badge.processing {
+  background: rgba(99, 102, 241, 0.9);
+}
+
+.availability-badge.pending {
+  background: rgba(245, 158, 11, 0.9);
+}
+
+/* ---------- Detail: état de la bibliothèque et de la demande ---------- */
+.details-library {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.details-library a {
+  color: var(--accent-primary-hover);
+  text-decoration: none;
+}
+
+.details-library a:hover {
+  text-decoration: underline;
+}
+
+.request-note {
+  margin-top: 10px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.request-note strong {
+  color: var(--text-primary);
+}
+
+/* ---------- Volume selector: tomes déjà présents ---------- */
+.modal-volume-item.owned {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.modal-volume-item.owned:hover {
+  border-color: var(--border);
+  background: var(--bg-primary);
+}
+
+.modal-volume-owned-tag {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--success);
+  font-weight: 600;
+}
+
+.modal-hint {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: -10px 0 16px;
+}
+
+/* ---------- Administration ---------- */
+.admin-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+
+.admin-tab {
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.admin-tab:hover {
+  color: var(--text-primary);
+}
+
+.admin-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent-primary);
+}
+
+.admin-request-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 40px;
+}
+
+.admin-request-card {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 16px;
+  align-items: start;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.admin-request-cover {
+  width: 64px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.admin-request-no-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated);
+  font-size: 1.6rem;
+}
+
+.admin-request-info {
+  min-width: 0;
+}
+
+.admin-request-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.admin-request-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.admin-request-title:hover {
+  color: var(--accent-primary-hover);
+}
+
+.admin-request-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.admin-request-meta strong {
+  color: var(--text-primary);
+}
+
+.admin-request-meta a {
+  color: var(--accent-primary-hover);
+  text-decoration: none;
+}
+
+.admin-request-meta a:hover {
+  text-decoration: underline;
+}
+
+.admin-request-library {
+  color: var(--success);
+}
+
+.admin-request-warning {
+  color: var(--warning);
+}
+
+.admin-request-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.admin-decline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.admin-decline-form .form-input {
+  flex: 1 1 260px;
+  padding: 8px 12px;
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding-bottom: 40px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 700px) {
+  .admin-request-card {
+    grid-template-columns: 48px 1fr;
+  }
+
+  .admin-request-cover {
+    width: 48px;
+    height: 72px;
+  }
+
+  .admin-request-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+.role-badge {
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.role-badge.admin {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+}
+
+.admin-library-card {
+  max-width: 720px;
+  padding: 24px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.admin-section-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.admin-library-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.admin-library-stats dt {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.admin-library-stats dd {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.admin-library-card code {
+  font-size: 0.8rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
 }

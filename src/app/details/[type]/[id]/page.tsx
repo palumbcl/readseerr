@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import MediaDetails from "@/components/MediaDetails";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import type { MediaDetail } from "@/lib/types";
+import type { DetailAvailability, MediaDetail } from "@/lib/types";
 
 export default function DetailsPage() {
   const params = useParams();
@@ -12,6 +12,7 @@ export default function DetailsPage() {
   const id = params.id as string;
 
   const [detail, setDetail] = useState<MediaDetail | null>(null);
+  const [state, setState] = useState<DetailAvailability | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -23,6 +24,7 @@ export default function DetailsPage() {
 
         if (response.ok) {
           setDetail(data.detail);
+          setState(data.state ?? null);
         } else {
           setError(data.error || "Erreur lors du chargement.");
         }
@@ -58,5 +60,5 @@ export default function DetailsPage() {
     );
   }
 
-  return <MediaDetails detail={detail} />;
+  return <MediaDetails detail={detail} state={state} />;
 }

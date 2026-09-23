@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { compare } from "bcrypt-ts";
+import { resolveRole } from "@/lib/roles";
 
 // Le SSO n'est activé que si Authelia est entièrement configuré : un provider
 // OIDC incomplet invalide toute la config Auth.js (y compris la connexion locale).
@@ -99,12 +100,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   providers,
   callbacks: {
     async jwt({ token, user, profile }) {
-      if (user) {
-        token.id = user.id;
-        token.name = user.name;
-      }
       if (profile) {
         token.groups = (profile as Record<string, unknown>).groups ?? [];
+      }
+      if (user?.id) {
+        token.id = user.id;
+        token.name = user.name;
+
+        // Connexion : rôle effectif (ADMIN_EMAILS / groupe Authelia / base), recopié en base.
+        // Le rôle du jeton ne sert qu'à l'affichage : les API recalculent toujours le rôle.
+        const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true, email: true } });
+        const role = resolveRole(dbUser?.role, dbUser?.email, token.groups);
+        if (dbUser && dbUser.role !== role) {
+          await prisma.user.update({ where: { id: user.id }, data: { role } });
+        }
+        token.role = role;
       }
       return token;
     },
@@ -112,6 +122,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.name = token.name as string;
+        session.user.role = token.role === "admin" ? "admin" : "user";
       }
       return session;
     },

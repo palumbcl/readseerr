@@ -7,13 +7,30 @@ interface VolumeSelectorProps {
   volumes: VolumeInfo[];
   onConfirm: (selectedVolumes: number[]) => void;
   onClose: () => void;
+  /** Tomes pré-cochés (modification d'une demande existante). */
+  initialSelected?: number[];
+  /** Tomes déjà présents dans la bibliothèque : affichés mais non sélectionnables. */
+  ownedVolumes?: number[] | null;
+  confirmLabel?: string;
 }
 
-export default function VolumeSelector({ volumes, onConfirm, onClose }: VolumeSelectorProps) {
-  const [selected, setSelected] = useState<Set<number>>(new Set());
-  const allSelected = selected.size === volumes.length;
+export default function VolumeSelector({
+  volumes,
+  onConfirm,
+  onClose,
+  initialSelected,
+  ownedVolumes,
+  confirmLabel = "Demander",
+}: VolumeSelectorProps) {
+  const owned = new Set(ownedVolumes ?? []);
+  const selectable = volumes.filter((v) => !owned.has(v.number));
+  const [selected, setSelected] = useState<Set<number>>(
+    new Set((initialSelected ?? []).filter((n) => !owned.has(n)))
+  );
+  const allSelected = selectable.length > 0 && selected.size === selectable.length;
 
   const toggleVolume = (num: number) => {
+    if (owned.has(num)) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(num)) {
@@ -29,7 +46,7 @@ export default function VolumeSelector({ volumes, onConfirm, onClose }: VolumeSe
     if (allSelected) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(volumes.map((v) => v.number)));
+      setSelected(new Set(selectable.map((v) => v.number)));
     }
   };
 
@@ -41,6 +58,11 @@ export default function VolumeSelector({ volumes, onConfirm, onClose }: VolumeSe
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h3 className="modal-title">Sélectionner les tomes</h3>
+        {owned.size > 0 && (
+          <p className="modal-hint">
+            {owned.size} tome{owned.size > 1 ? "s sont" : " est"} déjà dans la bibliothèque.
+          </p>
+        )}
 
         {/* Select all */}
         <div
@@ -49,25 +71,32 @@ export default function VolumeSelector({ volumes, onConfirm, onClose }: VolumeSe
           style={{ marginBottom: 12 }}
         >
           <div className="modal-volume-checkbox">{allSelected && "✓"}</div>
-          <span style={{ fontWeight: 600 }}>Tous les tomes ({volumes.length})</span>
+          <span style={{ fontWeight: 600 }}>
+            {owned.size > 0 ? `Tous les tomes manquants (${selectable.length})` : `Tous les tomes (${volumes.length})`}
+          </span>
         </div>
 
         <div className="modal-volume-list">
-          {volumes.map((vol) => (
-            <div
-              key={vol.number}
-              className={`modal-volume-item ${selected.has(vol.number) ? "selected" : ""}`}
-              onClick={() => toggleVolume(vol.number)}
-            >
-              <div className="modal-volume-checkbox">
-                {selected.has(vol.number) && "✓"}
+          {volumes.map((vol) => {
+            const isOwned = owned.has(vol.number);
+            return (
+              <div
+                key={vol.number}
+                className={`modal-volume-item ${selected.has(vol.number) ? "selected" : ""} ${isOwned ? "owned" : ""}`}
+                onClick={() => toggleVolume(vol.number)}
+                aria-disabled={isOwned}
+              >
+                <div className="modal-volume-checkbox">
+                  {selected.has(vol.number) && "✓"}
+                </div>
+                <span>
+                  Tome {vol.number}
+                  {vol.title && ` — ${vol.title}`}
+                </span>
+                {isOwned && <span className="modal-volume-owned-tag">Dans la bibliothèque</span>}
               </div>
-              <span>
-                Tome {vol.number}
-                {vol.title && ` — ${vol.title}`}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="modal-actions">
@@ -79,7 +108,7 @@ export default function VolumeSelector({ volumes, onConfirm, onClose }: VolumeSe
             onClick={handleConfirm}
             disabled={selected.size === 0}
           >
-            Demander {selected.size > 0 ? `(${selected.size})` : ""}
+            {confirmLabel} {selected.size > 0 ? `(${selected.size})` : ""}
           </button>
         </div>
       </div>

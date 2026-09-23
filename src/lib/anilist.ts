@@ -147,6 +147,11 @@ function mapStatus(status: string | null): string | null {
   return status ? statusMap[status] ?? status : null;
 }
 
+/** Romaji / anglais : Komga range souvent les mangas sous l'un ou l'autre */
+function getAltTitles(media: AniListMedia): string[] {
+  return [media.title.english, media.title.romaji].filter((t): t is string => Boolean(t));
+}
+
 function mediaToResult(media: AniListMedia): MediaResult {
   return {
     id: String(media.id),
@@ -157,6 +162,7 @@ function mediaToResult(media: AniListMedia): MediaResult {
     publisher: null,
     author: getAuthor(media.staff),
     volumeCount: media.volumes,
+    altTitles: getAltTitles(media),
   };
 }
 
@@ -206,6 +212,8 @@ export async function getMangaDetails(id: string): Promise<MediaDetail> {
     type: "manga",
     publisher: null,
     author: getAuthor(media.staff),
+    volumeCount: media.volumes,
+    altTitles: getAltTitles(media),
     description: media.description,
     status: mapStatus(media.status),
     volumes,

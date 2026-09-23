@@ -9,13 +9,12 @@ interface SearchBarProps {
   compact?: boolean;
 }
 
-const MEDIA_TYPES = ["manga", "comic", "bd"] as const;
+const MEDIA_TYPES = ["manga", "comic"] as const;
 const SUGGESTIONS_PER_SOURCE = 6;
 
 const TYPE_LABELS: Record<string, { emoji: string; label: string }> = {
   manga: { emoji: "🇯🇵", label: "Manga" },
-  comic: { emoji: "🇺🇸", label: "Comic" },
-  bd: { emoji: "🇫🇷", label: "BD" },
+  comic: { emoji: "📘", label: "Comic / BD" },
 };
 
 export default function SearchBar({ defaultQuery = "", compact = false }: SearchBarProps) {

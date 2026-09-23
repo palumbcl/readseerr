@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMangaDetails } from "@/lib/anilist";
 import { getComicDetails } from "@/lib/comicvine";
-import { getBDDetails } from "@/lib/googlebooks";
-import { getBDDetailsOpenLibrary } from "@/lib/openlibrary";
 import { detailsCache } from "@/lib/cache";
-import type { MediaDetail } from "@/lib/types";
+import { auth } from "@/lib/auth";
+import { getDetailAvailability } from "@/lib/media";
+import type { DetailAvailability, MediaDetail } from "@/lib/types";
+
+/** État bibliothèque / demandes pour l'utilisateur connecté (null si indisponible) */
+async function getState(detail: MediaDetail): Promise<DetailAvailability | null> {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+  try {
+    // Même base que les badges de recherche : nombre de tomes connu à la source
+    return await getDetailAvailability(session.user.id, {
+      ...detail,
+      volumeCount: detail.volumeCount ?? (detail.volumes.length || null),
+    });
+  } catch (error) {
+    console.error("Detail availability error:", error);
+    return null;
+  }
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -22,7 +38,7 @@ export async function GET(request: NextRequest) {
   const cacheKey = `details:${type}:${id}`;
   const cached = detailsCache.get(cacheKey) as MediaDetail | null;
   if (cached) {
-    return NextResponse.json({ detail: cached });
+    return NextResponse.json({ detail: cached, state: await getState(cached) });
   }
 
   try {
@@ -37,20 +53,9 @@ export async function GET(request: NextRequest) {
         detail = await getComicDetails(id);
         break;
 
-      case "bd":
-        // Route to the correct source based on ID prefix
-        if (id.startsWith("ol-")) {
-          // Open Library result
-          detail = await getBDDetailsOpenLibrary(id);
-        } else {
-          // Google Books result
-          detail = await getBDDetails(id);
-        }
-        break;
-
       default:
         return NextResponse.json(
-          { error: "Invalid type. Use 'manga', 'comic', or 'bd'." },
+          { error: "Invalid type. Use 'manga' or 'comic'." },
           { status: 400 }
         );
     }
@@ -58,7 +63,7 @@ export async function GET(request: NextRequest) {
     // Cache result
     detailsCache.set(cacheKey, detail);
 
-    return NextResponse.json({ detail });
+    return NextResponse.json({ detail, state: await getState(detail) });
   } catch (error) {
     console.error(`Details error [${type}/${id}]:`, error);
     return NextResponse.json(

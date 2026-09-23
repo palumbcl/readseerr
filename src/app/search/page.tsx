@@ -6,19 +6,17 @@ import SearchBar from "@/components/SearchBar";
 import MediaGrid from "@/components/MediaGrid";
 import type { MediaResult, MediaType, SearchPage } from "@/lib/types";
 
-const MEDIA_TYPES = ["manga", "comic", "bd"] as const;
+const MEDIA_TYPES = ["manga", "comic"] as const;
 
 const FILTER_OPTIONS: { value: MediaType | "all"; label: string; emoji: string }[] = [
   { value: "all", label: "Tous", emoji: "📚" },
   { value: "manga", label: "Manga", emoji: "🇯🇵" },
-  { value: "comic", label: "Comic", emoji: "🇺🇸" },
-  { value: "bd", label: "BD", emoji: "🇫🇷" },
+  { value: "comic", label: "Comics & BD", emoji: "📘" },
 ];
 
 const TYPE_LABELS: Record<MediaType, string> = {
   manga: "manga",
-  comic: "comics",
-  bd: "BD",
+  comic: "comics & BD",
 };
 
 // Sorting is purely client-side, applied once every result has been loaded
@@ -38,7 +36,6 @@ const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
 const MAX_PAGES: Record<MediaType, number> = {
   manga: 40, // 50/page → 2 000 series
   comic: 40, // 100/page → 4 000 series
-  bd: 10, // Google Books pages are throttled server-side (1.5 s each)
 };
 const PARALLEL_PAGES = 3;
 
@@ -71,7 +68,6 @@ const initialSource = (): SourceState => ({
 const initialSources = (): SourcesState => ({
   manga: initialSource(),
   comic: initialSource(),
-  bd: initialSource(),
 });
 
 const resultKey = (r: MediaResult) => `${r.type}-${r.id}`;
