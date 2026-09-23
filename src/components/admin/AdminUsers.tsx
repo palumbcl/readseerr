@@ -21,6 +21,7 @@ interface AdminUser {
 const PROVIDER_LABELS: Record<string, string> = {
   local: "Compte local",
   authelia: "Authelia",
+  komga: "Komga",
 };
 
 /** Quota par défaut : tomes tous les N jours (vide = illimité). */

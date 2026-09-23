@@ -17,7 +17,7 @@ interface FieldDef {
   label: string;
   placeholder?: string;
   help?: string;
-  type?: "text" | "number";
+  type?: "text" | "number" | "toggle";
 }
 
 interface SectionDef {
@@ -42,6 +42,12 @@ const SECTIONS: SectionDef[] = [
       { key: "komgaPassword", label: "Mot de passe (sans clé API)" },
       { key: "komgaWebhookSecret", label: "Secret du webhook", help: "Jeton attendu par /api/webhooks/komga." },
       { key: "komgaSyncIntervalMinutes", label: "Intervalle de synchronisation (min)", placeholder: "30", type: "number" },
+      {
+        key: "komgaLoginEnabled",
+        label: "Connexion avec un compte Komga",
+        type: "toggle",
+        help: "Les lecteurs se connectent avec leurs identifiants Komga ; leur compte ReadSeerr est créé à la première connexion.",
+      },
     ],
   },
   {
@@ -84,6 +90,37 @@ const SOURCE_LABELS: Record<Source, string> = {
   env: "Variable d'environnement",
   none: "Non défini",
 };
+
+/** Adresse à appeler depuis Komga (ou l'outil qui relaie ses événements) quand des tomes sont ajoutés. */
+function WebhookUrlHint() {
+  const [copied, setCopied] = useState(false);
+  // Adresse vue par le navigateur : en production, celle de votre domaine
+  const url = `${window.location.origin}/api/webhooks/komga?token=VOTRE_SECRET`;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Presse-papiers indisponible (HTTP non sécurisé) : l'adresse reste sélectionnable
+    }
+  };
+
+  return (
+    <div className="settings-webhook">
+      <span className="settings-help">
+        URL à appeler lors d&apos;un ajout dans Komga (remplacez <code>VOTRE_SECRET</code> par le secret ci-dessus) :
+      </span>
+      <div className="settings-webhook-url">
+        <code>{url}</code>
+        <button type="button" className="btn-link" onClick={copy}>
+          {copied ? "Copié ✓" : "Copier"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function SettingsSection({
   section,
@@ -161,6 +198,17 @@ function SettingsSection({
                 {field.label}
                 <span className={`settings-source ${state.source}`}>{SOURCE_LABELS[state.source]}</span>
               </label>
+              {field.type === "toggle" ? (
+                <select
+                  id={`cfg-${field.key}`}
+                  className="form-input"
+                  value={inputValue === "true" ? "true" : "false"}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                >
+                  <option value="false">Désactivée</option>
+                  <option value="true">Activée</option>
+                </select>
+              ) : (
               <input
                 id={`cfg-${field.key}`}
                 className="form-input"
@@ -170,7 +218,9 @@ function SettingsSection({
                 placeholder={state.secret ? (state.set ? "•••••••• (laisser vide pour conserver)" : "Non défini") : field.placeholder}
                 onChange={(e) => setDraft((prev) => ({ ...prev, [field.key]: e.target.value }))}
               />
+              )}
               {field.help && <span className="settings-help">{field.help}</span>}
+              {field.key === "komgaWebhookSecret" && <WebhookUrlHint />}
               {state.source === "ui" && (
                 <button
                   type="button"
@@ -237,8 +287,6 @@ export default function AdminSettings() {
     );
   }
 
-  const webhookUrl = typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/komga?token=VOTRE_SECRET` : "";
-
   return (
     <div className="settings-grid">
       <p className="request-note" style={{ gridColumn: "1 / -1", marginTop: 0 }}>
@@ -249,9 +297,6 @@ export default function AdminSettings() {
       {SECTIONS.map((section) => (
         <SettingsSection key={section.id} section={section} config={config} onSaved={setConfig} />
       ))}
-      <p className="request-note" style={{ gridColumn: "1 / -1" }}>
-        Webhook Komga à déclarer : <code>{webhookUrl}</code>
-      </p>
     </div>
   );
 }

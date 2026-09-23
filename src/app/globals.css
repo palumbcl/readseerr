@@ -2259,3 +2259,30 @@ input {
 .settings-result.ko {
   color: var(--error);
 }
+
+.settings-webhook {
+  margin-top: 8px;
+}
+
+.settings-webhook-url {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.settings-webhook-url code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+}
+
+.settings-webhook-url .btn-link {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}

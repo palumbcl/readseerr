@@ -7,6 +7,8 @@ import LoadingSpinner from "./LoadingSpinner";
 
 interface AuthFormProps {
   ssoEnabled: boolean;
+  /** Identifiants Komga acceptés dans le formulaire */
+  komgaLoginEnabled: boolean;
   callbackUrl: string;
   initialError?: string;
 }
@@ -18,6 +20,9 @@ const ERROR_MESSAGES: Record<string, string> = {
     "Un compte local existe déjà avec cet email. Connectez-vous avec votre mot de passe.",
   AccessDenied: "Accès refusé.",
   Configuration: "Erreur de configuration du serveur d'authentification.",
+  komga_conflict:
+    "Un compte ReadSeerr utilise déjà cet email : connectez-vous avec son mot de passe ReadSeerr ou en SSO.",
+  komga_unavailable: "Komga est injoignable pour le moment : réessayez plus tard ou utilisez votre compte ReadSeerr.",
 };
 
 function errorMessage(code?: string) {
@@ -25,7 +30,7 @@ function errorMessage(code?: string) {
   return ERROR_MESSAGES[code] ?? "La connexion a échoué. Réessayez.";
 }
 
-export default function AuthForm({ ssoEnabled, callbackUrl, initialError }: AuthFormProps) {
+export default function AuthForm({ ssoEnabled, komgaLoginEnabled, callbackUrl, initialError }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(errorMessage(initialError));
@@ -51,7 +56,9 @@ export default function AuthForm({ ssoEnabled, callbackUrl, initialError }: Auth
       });
 
       if (!result || result.error) {
-        setError(errorMessage(result?.error ?? "CredentialsSignin"));
+        // Les erreurs Komga arrivent dans `code` (sous-classes de CredentialsSignin)
+        const code = result?.code && result.code !== "credentials" ? result.code : result?.error;
+        setError(errorMessage(code ?? "CredentialsSignin"));
         setLoading(false);
         return;
       }
@@ -82,7 +89,11 @@ export default function AuthForm({ ssoEnabled, callbackUrl, initialError }: Auth
       </div>
 
       <h1 className="auth-title">ReadSeerr</h1>
-      <p className="auth-subtitle">Connectez-vous pour accéder à l&apos;application</p>
+      <p className="auth-subtitle">
+        {komgaLoginEnabled
+          ? "Connectez-vous avec votre compte ReadSeerr ou vos identifiants Komga"
+          : "Connectez-vous pour accéder à l’application"}
+      </p>
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">

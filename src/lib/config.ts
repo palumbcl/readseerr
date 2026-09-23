@@ -13,6 +13,7 @@ export const CONFIG_FIELDS = {
   komgaPassword: { env: "KOMGA_PASSWORD", secret: true },
   komgaWebhookSecret: { env: "KOMGA_WEBHOOK_SECRET", secret: true },
   komgaSyncIntervalMinutes: { env: "KOMGA_SYNC_INTERVAL_MINUTES", secret: false },
+  komgaLoginEnabled: { env: "KOMGA_LOGIN_ENABLED", secret: false }, // "true" : connexion avec un compte Komga
   discordWebhookUrl: { env: "DISCORD_WEBHOOK_URL", secret: true },
   prowlarrUrl: { env: "PROWLARR_URL", secret: false },
   smtpHost: { env: "SMTP_HOST", secret: false },

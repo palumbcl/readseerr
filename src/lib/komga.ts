@@ -150,6 +150,43 @@ export async function fetchKomgaSeriesThumbnail(seriesId: string): Promise<Respo
   return response.ok ? response : null;
 }
 
+export function isKomgaLoginEnabled(): boolean {
+  return getConfig("komgaLoginEnabled") === "true" && Boolean(getKomgaBaseUrl());
+}
+
+export interface KomgaAccount {
+  id: string;
+  email: string;
+  roles: string[];
+}
+
+/**
+ * Vérifie des identifiants Komga (email + mot de passe) auprès du serveur.
+ * null = identifiants refusés ; "unavailable" = Komga injoignable.
+ */
+export async function authenticateKomgaUser(email: string, password: string): Promise<KomgaAccount | null | "unavailable"> {
+  const baseUrl = getKomgaBaseUrl();
+  if (!baseUrl) return "unavailable";
+
+  try {
+    const response = await fetch(`${baseUrl}/api/v2/users/me`, {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${email}:${password}`).toString("base64")}`,
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (response.status === 401 || response.status === 403) return null;
+    if (!response.ok) return "unavailable";
+
+    const account: KomgaAccount = await response.json();
+    return account?.id && account.email ? { ...account, email: account.email.toLowerCase() } : null;
+  } catch (error) {
+    console.error("Connexion Komga impossible:", error);
+    return "unavailable";
+  }
+}
+
 /**
  * Cherche des séries portant ce titre dans la bibliothèque Komga.
  * Retourne null si Komga n'est pas configuré ou injoignable (la notification ne doit jamais en dépendre).

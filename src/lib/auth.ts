@@ -1,10 +1,49 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import type { Provider } from "next-auth/providers";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { compare } from "bcrypt-ts";
 import { resolveRole } from "@/lib/roles";
+import { authenticateKomgaUser, isKomgaLoginEnabled } from "@/lib/komga";
+
+/** Un compte ReadSeerr existe déjà avec cet email, sans lien avec Komga. */
+class KomgaAccountConflict extends CredentialsSignin {
+  code = "komga_conflict";
+}
+
+class KomgaUnavailable extends CredentialsSignin {
+  code = "komga_unavailable";
+}
+
+/**
+ * Connexion avec un compte Komga : le compte ReadSeerr est créé et lié à la première connexion.
+ * Un compte Komga ne peut jamais reprendre un compte ReadSeerr existant (local ou Authelia)
+ * portant le même email : sinon, créer un compte Komga "admin@readseerr.local" suffirait à devenir admin.
+ */
+async function authorizeKomgaUser(email: string, password: string) {
+  const komga = await authenticateKomgaUser(email, password);
+  if (komga === "unavailable") throw new KomgaUnavailable();
+  if (!komga) return null;
+
+  const linked = await prisma.account.findUnique({
+    where: { provider_providerAccountId: { provider: "komga", providerAccountId: komga.id } },
+    include: { user: true },
+  });
+  if (linked) return { id: linked.user.id, name: linked.user.name, email: linked.user.email };
+
+  if (await prisma.user.findUnique({ where: { email: komga.email } })) throw new KomgaAccountConflict();
+
+  const created = await prisma.user.create({
+    data: {
+      name: komga.email.split("@")[0],
+      email: komga.email,
+      accounts: { create: { type: "credentials", provider: "komga", providerAccountId: komga.id } },
+    },
+  });
+  console.log(`Nouveau compte ReadSeerr créé depuis Komga : ${komga.email}`);
+  return { id: created.id, name: created.name, email: created.email };
+}
 
 // Le SSO n'est activé que si Authelia est entièrement configuré : un provider
 // OIDC incomplet invalide toute la config Auth.js (y compris la connexion locale).
@@ -34,18 +73,14 @@ const providers: Provider[] = [
         where: { email },
       });
 
-      // Les comptes créés via Authelia n'ont pas de mot de passe local
-      if (!user?.passwordHash) return null;
+      // 1. Compte local ReadSeerr (les comptes Authelia / Komga n'ont pas de mot de passe local)
+      if (user?.passwordHash && (await compare(password, user.passwordHash))) {
+        return { id: user.id, name: user.name, email: user.email };
+      }
 
-      const isPasswordValid = await compare(password, user.passwordHash);
-
-      if (!isPasswordValid) return null;
-
-      return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      };
+      // 2. Identifiants Komga, si l'option est activée dans les paramètres
+      if (!isKomgaLoginEnabled()) return null;
+      return authorizeKomgaUser(email, password);
     },
   }),
 ];
