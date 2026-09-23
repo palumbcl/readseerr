@@ -31,7 +31,7 @@ export default function Navbar() {
 
         {/* Nav Links */}
         <div className="navbar-links">
-          <Link href="/" className="navbar-link">Accueil</Link>
+          <Link href="/" className="navbar-link">Découvrir</Link>
           <Link href="/requests" className="navbar-link">Mes demandes</Link>
           {session.user?.role === "admin" && (
             <Link href="/admin" className="navbar-link">Administration</Link>

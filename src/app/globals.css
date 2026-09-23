@@ -1793,3 +1793,107 @@ input {
   border-radius: 4px;
   background: var(--bg-elevated);
 }
+
+/* ---------- Découvrir ---------- */
+.hero.hero-compact {
+  min-height: auto;
+  padding: 120px 20px 48px;
+}
+
+.discover {
+  padding-bottom: 60px;
+}
+
+.discover-row {
+  margin-bottom: 36px;
+}
+
+.discover-row-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.discover-row-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.discover-row-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.discover-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.discover-row-arrow {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.discover-row-arrow:hover {
+  border-color: var(--accent-primary);
+  background: var(--bg-elevated);
+}
+
+.discover-row-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 170px;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 8px 4px 16px;
+  scrollbar-width: thin;
+}
+
+.discover-row-track > * {
+  scroll-snap-align: start;
+}
+
+.discover-row-track .media-card {
+  display: block;
+  text-decoration: none;
+}
+
+/* Le survol agrandit la carte : évite qu'elle soit rognée par la rangée */
+.discover-row-track .media-card:hover {
+  transform: translateY(-4px);
+}
+
+.discover-skeleton-title {
+  width: 220px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 600px) {
+  .hero.hero-compact {
+    padding: 96px 16px 32px;
+  }
+
+  .discover-row-track {
+    grid-auto-columns: 130px;
+    gap: 12px;
+  }
+
+  .discover-row-arrow {
+    display: none;
+  }
+}

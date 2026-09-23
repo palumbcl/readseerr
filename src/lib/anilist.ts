@@ -224,3 +224,69 @@ export async function getMangaDetails(id: string): Promise<MediaDetail> {
     bannerUrl: media.bannerImage,
   };
 }
+
+const DISCOVER_QUERY = `
+query ($perPage: Int, $sort: [MediaSort], $startDateGreater: FuzzyDateInt, $popularityGreater: Int) {
+  Page(page: 1, perPage: $perPage) {
+    media(
+      type: MANGA
+      isAdult: false
+      countryOfOrigin: "JP"
+      format_in: [MANGA, ONE_SHOT]
+      sort: $sort
+      startDate_greater: $startDateGreater
+      popularity_greater: $popularityGreater
+    ) {
+      id
+      title {
+        romaji
+        english
+        native
+      }
+      coverImage {
+        large
+        extraLarge
+      }
+      bannerImage
+      startDate { year }
+      format
+      status
+      description(asHtml: false)
+      volumes
+      chapters
+      genres
+      staff(sort: RELEVANCE, perPage: 3) {
+        edges {
+          role
+          node { name { full } }
+        }
+      }
+    }
+  }
+}
+`;
+
+/** Mangas japonais du moment (tendance AniList, sans les webtoons coréens / chinois). */
+export async function getTrendingManga(limit = 20): Promise<MediaResult[]> {
+  const data = await queryAniList<{ Page: { media: AniListMedia[] } }>(DISCOVER_QUERY, {
+    perPage: limit,
+    sort: ["TRENDING_DESC"],
+  });
+  return data.Page.media.map(mediaToResult);
+}
+
+/** Séries lancées depuis moins d'un an et déjà suivies par une communauté conséquente. */
+export async function getNewManga(limit = 20): Promise<MediaResult[]> {
+  const since = new Date();
+  since.setFullYear(since.getFullYear() - 1);
+  const fuzzyDate = since.getFullYear() * 10000 + (since.getMonth() + 1) * 100 + since.getDate();
+
+  const data = await queryAniList<{ Page: { media: AniListMedia[] } }>(DISCOVER_QUERY, {
+    perPage: limit,
+    sort: ["POPULARITY_DESC"],
+    startDateGreater: fuzzyDate,
+    popularityGreater: 1000,
+  });
+  // AniList compare des dates approximatives : on écarte ce qui a une année de début plus ancienne
+  return data.Page.media.map(mediaToResult).filter((m) => !m.year || m.year >= since.getFullYear());
+}

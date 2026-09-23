@@ -107,6 +107,45 @@ export async function fetchKomgaBookNumbers(seriesId: string): Promise<number[] 
   }
 }
 
+export interface KomgaRecentSeries {
+  id: string;
+  name: string;
+  booksCount: number;
+  url: string | null;
+  /** Couverture servie par ReadSeerr (Komga exige une authentification) */
+  thumbnailUrl: string;
+  updatedAt: string | null;
+}
+
+/** Séries récemment ajoutées ou complétées dans la bibliothèque. */
+export async function fetchLatestKomgaSeries(size = 20): Promise<KomgaRecentSeries[]> {
+  const data = await komgaGet<KomgaPage<KomgaSeries & { lastModified?: string }>>(
+    `/api/v1/series/latest?size=${size}&deleted=false`,
+    8000
+  );
+  return (data.content ?? []).map((s) => ({
+    id: s.id,
+    name: s.metadata?.title || s.name,
+    booksCount: s.booksCount,
+    url: getKomgaSeriesUrl(s.id),
+    thumbnailUrl: `/api/library/thumbnail/${encodeURIComponent(s.id)}`,
+    updatedAt: s.lastModified ?? null,
+  }));
+}
+
+/** Couverture d'une série Komga (image brute), null si indisponible. */
+export async function fetchKomgaSeriesThumbnail(seriesId: string): Promise<Response | null> {
+  const baseUrl = getKomgaBaseUrl();
+  const headers = getKomgaAuthHeaders();
+  if (!baseUrl || !headers) return null;
+
+  const response = await fetch(`${baseUrl}/api/v1/series/${encodeURIComponent(seriesId)}/thumbnail`, {
+    headers,
+    signal: AbortSignal.timeout(8000),
+  });
+  return response.ok ? response : null;
+}
+
 /**
  * Cherche des séries portant ce titre dans la bibliothèque Komga.
  * Retourne null si Komga n'est pas configuré ou injoignable (la notification ne doit jamais en dépendre).

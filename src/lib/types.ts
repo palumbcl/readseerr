@@ -128,3 +128,27 @@ export interface AdminRequestRecord extends RequestRecord {
   sourceUrl: string | null;
   prowlarrUrl: string | null;
 }
+
+/** Série récemment ajoutée dans Komga (page Découvrir) */
+export interface LibraryRecentItem {
+  id: string;
+  name: string;
+  booksCount: number;
+  url: string | null;
+  thumbnailUrl: string;
+  updatedAt: string | null;
+}
+
+export interface DiscoverRow {
+  id: "trending-manga" | "new-manga" | "recent-comics" | "recent-requests";
+  title: string;
+  subtitle: string;
+  items: MediaResult[];
+}
+
+/** GET /api/discover */
+export interface DiscoverResponse {
+  /** null si Komga n'est pas configuré ou injoignable */
+  library: LibraryRecentItem[] | null;
+  rows: DiscoverRow[];
+}

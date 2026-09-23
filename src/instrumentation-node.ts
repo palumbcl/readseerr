@@ -1,11 +1,16 @@
 import { isKomgaConfigured } from "@/lib/komga";
 import { syncLibrary } from "@/lib/media";
+import { warmDiscoverCache } from "@/lib/discover";
 
 /**
- * Synchronisation périodique de la bibliothèque Komga (badges de disponibilité,
- * clôture des demandes dont le webhook aurait été manqué).
+ * Tâches de fond : préchargement de la page Découvrir et synchronisation périodique
+ * de la bibliothèque Komga (badges de disponibilité, clôture des demandes).
  */
 export function startLibrarySyncSchedule() {
+  // Page Découvrir : cache rafraîchi avant son expiration (1 h 05) pour rester toujours chaud
+  setTimeout(() => void warmDiscoverCache(), 10_000);
+  setInterval(() => void warmDiscoverCache(), 55 * 60_000);
+
   if (!isKomgaConfigured()) return;
 
   const intervalMinutes = Math.max(5, parseInt(process.env.KOMGA_SYNC_INTERVAL_MINUTES || "30", 10) || 30);
