@@ -19,6 +19,9 @@ model User {
   requests     Request[]
   handledRequests Request[] @relation("HandledRequests")
   follows      Follow[]
+  issues       Issue[]
+  resolvedIssues Issue[] @relation("ResolvedIssues")
+  issueComments IssueComment[]
   accounts     Account[]
   sessions     Session[]
 }
@@ -67,6 +70,7 @@ model Media {
   updatedAt     DateTime  @updatedAt
   requests      Request[]
   follows       Follow[]
+  issues        Issue[]
 
   @@unique([mediaType, externalId])
   @@index([status])
@@ -108,6 +112,41 @@ model Follow {
 
   @@unique([userId, mediaId])
   @@index([mediaId])
+}
+
+/// Problème signalé sur une œuvre disponible (tome manquant, fichier illisible…).
+model Issue {
+  id           String         @id @default(cuid())
+  mediaId      String
+  media        Media          @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         String         // missing_volume | bad_file | wrong_content | metadata | other
+  volume       Int?           // tome concerné, si précisé
+  message      String
+  status       String         @default("open") // open | resolved
+  resolvedById String?
+  resolvedBy   User?          @relation("ResolvedIssues", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  comments     IssueComment[]
+
+  @@index([status])
+  @@index([userId])
+  @@index([mediaId])
+}
+
+model IssueComment {
+  id        String   @id @default(cuid())
+  issueId   String
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([issueId])
 }
 
 /// Copie locale des séries Komga, rafraîchie par la synchronisation (badges de disponibilité).

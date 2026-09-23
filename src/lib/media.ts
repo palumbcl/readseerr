@@ -18,14 +18,18 @@ import type {
 /** Demandes que l'admin doit encore traiter */
 export const OPEN_REQUEST_STATUSES = ["pending", "approved"];
 
-/** Crée ou met à jour la fiche de l'œuvre avec les dernières métadonnées connues. */
+/**
+ * Crée ou met à jour la fiche de l'œuvre avec les dernières métadonnées connues.
+ * Un champ absent de la requête ne remplace jamais une valeur déjà connue
+ * (ex. basculer la demande automatique depuis la liste des suivis).
+ */
 export function upsertMedia(payload: RequestPayload): Promise<Media> {
   const data = {
     title: payload.title,
-    coverUrl: payload.coverUrl || null,
-    altTitles: payload.altTitles?.length ? JSON.stringify(payload.altTitles) : null,
-    year: payload.year ?? null,
-    volumeCount: payload.volumeCount ?? null,
+    ...(payload.coverUrl && { coverUrl: payload.coverUrl }),
+    ...(payload.altTitles?.length && { altTitles: JSON.stringify(payload.altTitles) }),
+    ...(payload.year && { year: payload.year }),
+    ...(payload.volumeCount && { volumeCount: payload.volumeCount }),
   };
   return prisma.media.upsert({
     where: { mediaType_externalId: { mediaType: payload.mediaType, externalId: payload.externalId } },

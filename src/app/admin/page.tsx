@@ -5,12 +5,14 @@ import { useSession } from "next-auth/react";
 import AdminRequests from "@/components/admin/AdminRequests";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminLibrary from "@/components/admin/AdminLibrary";
+import IssueList from "@/components/IssueList";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
-type Tab = "requests" | "users" | "library";
+type Tab = "requests" | "issues" | "users" | "library";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "requests", label: "Demandes" },
+  { value: "issues", label: "Signalements" },
   { value: "users", label: "Utilisateurs" },
   { value: "library", label: "Bibliothèque" },
 ];
@@ -47,7 +49,7 @@ export default function AdminPage() {
       <div className="container">
         <div className="page-header">
           <h1 className="page-title">Administration</h1>
-          <p className="page-subtitle">Traitez les demandes, gérez les comptes et la synchronisation Komga.</p>
+          <p className="page-subtitle">Traitez les demandes et les signalements, gérez les comptes et la synchronisation Komga.</p>
         </div>
 
         <div className="admin-tabs" role="tablist">
@@ -66,6 +68,7 @@ export default function AdminPage() {
         </div>
 
         {tab === "requests" && <AdminRequests />}
+        {tab === "issues" && <IssueList scope="all" />}
         {tab === "users" && <AdminUsers />}
         {tab === "library" && <AdminLibrary />}
       </div>

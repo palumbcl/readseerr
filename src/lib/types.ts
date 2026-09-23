@@ -167,3 +167,44 @@ export interface DiscoverResponse {
   library: LibraryRecentItem[] | null;
   rows: DiscoverRow[];
 }
+
+export type IssueType = "missing_volume" | "bad_file" | "wrong_content" | "metadata" | "other";
+export type IssueStatus = "open" | "resolved";
+
+export const ISSUE_TYPE_LABELS: Record<IssueType, string> = {
+  missing_volume: "Tome manquant",
+  bad_file: "Fichier illisible ou corrompu",
+  wrong_content: "Mauvais contenu (langue, édition…)",
+  metadata: "Titre, couverture ou numérotation erronés",
+  other: "Autre",
+};
+
+/** Signalement, tel qu'affiché dans les listes */
+export interface IssueRecord {
+  id: string;
+  type: IssueType;
+  volume: number | null;
+  message: string;
+  status: IssueStatus;
+  createdAt: string;
+  resolvedAt: string | null;
+  media: { mediaType: MediaType; externalId: string; title: string; coverUrl: string | null };
+  user: { name: string };
+  resolvedBy: { name: string } | null;
+  commentCount: number;
+}
+
+export interface IssueComment {
+  id: string;
+  message: string;
+  createdAt: string;
+  user: { name: string; isAdmin: boolean };
+}
+
+/** Signalement complet (page de discussion) */
+export interface IssueDetail extends IssueRecord {
+  comments: IssueComment[];
+  libraryUrl: string | null;
+  /** L'utilisateur courant peut résoudre / rouvrir (auteur ou admin) */
+  canManage: boolean;
+}

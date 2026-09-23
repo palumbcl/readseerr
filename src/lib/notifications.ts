@@ -111,3 +111,44 @@ export async function sendFollowUpdateEmail({
 
   return sendEmail({ to: user.email, subject, text, html });
 }
+
+/** Prévient l'auteur d'un signalement : réponse de l'admin, résolution ou réouverture. */
+export async function sendIssueUpdateEmail({
+  kind,
+  user,
+  title,
+  issueId,
+  message,
+}: {
+  kind: "comment" | "resolved" | "reopened";
+  user: { name: string; email: string | null };
+  title: string;
+  issueId: string;
+  message?: string | null;
+}): Promise<boolean> {
+  if (!user.email) return false;
+
+  const subjects = {
+    comment: `Réponse à votre signalement : ${title}`,
+    resolved: `Signalement résolu : ${title}`,
+    reopened: `Signalement rouvert : ${title}`,
+  };
+  const intro = {
+    comment: `L'administrateur a répondu à votre signalement sur "${title}".`,
+    resolved: `Le problème que vous avez signalé sur "${title}" a été résolu.`,
+    reopened: `Votre signalement sur "${title}" a été rouvert.`,
+  };
+  const paragraphs = [intro[kind], ...(message ? [`« ${message} »`] : [])];
+
+  const appUrl = (process.env.NEXTAUTH_URL || process.env.AUTH_URL)?.replace(/\/$/, "");
+  const link = appUrl ? `${appUrl}/issues/${issueId}` : null;
+  const text = `Bonjour ${user.name},\n\n${paragraphs.join("\n\n")}\n\n${link ? `Voir la discussion : ${link}\n\n` : ""}L'équipe ReadSeerr`;
+  const html = [
+    `<p>Bonjour ${escapeHtml(user.name)},</p>`,
+    ...paragraphs.map((p) => `<p>${escapeHtml(p)}</p>`),
+    link ? `<p><a href="${escapeHtml(link)}">Voir la discussion</a></p>` : "",
+    "<p>L'équipe ReadSeerr</p>",
+  ].join("");
+
+  return sendEmail({ to: user.email, subject: subjects[kind], text, html });
+}

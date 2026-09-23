@@ -5,6 +5,7 @@ import type { DetailAvailability, MediaDetail } from "@/lib/types";
 import AvailabilityBadge from "./AvailabilityBadge";
 import RequestButton from "./RequestButton";
 import FollowButton from "./FollowButton";
+import ReportIssueButton from "./ReportIssueButton";
 
 interface MediaDetailsProps {
   detail: MediaDetail;
@@ -162,6 +163,9 @@ export default function MediaDetails({ detail, state }: MediaDetailsProps) {
 
           {/* Suivi de la série (nouveaux tomes / numéros) */}
           {state && <FollowButton media={detail} initialFollow={state.follow} />}
+
+          {/* Signalement : seulement pour ce qui est dans la bibliothèque */}
+          {state?.library && <ReportIssueButton media={detail} libraryVolumes={state.library.volumes} />}
         </div>
       </div>
     </div>

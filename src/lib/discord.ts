@@ -315,3 +315,53 @@ export async function sendDiscordRequestChangeNotification({
     ],
   });
 }
+
+const ISSUE_COLOR = 0xef4444;
+
+/** Prévient l'admin d'un nouveau signalement ou d'une réponse d'un lecteur. */
+export async function sendDiscordIssueNotification({
+  kind,
+  title,
+  mediaType,
+  coverUrl,
+  typeLabel,
+  volume,
+  message,
+  userName,
+  issueId,
+}: {
+  kind: "new" | "comment";
+  title: string;
+  mediaType: MediaType;
+  coverUrl?: string | null;
+  typeLabel: string;
+  volume?: number | null;
+  message: string;
+  userName: string;
+  issueId: string;
+}) {
+  const appUrl = getAppUrl();
+  const fields: EmbedField[] = [
+    { name: "Type", value: (TYPE_STYLES[mediaType] ?? TYPE_STYLES.comic).label, inline: true },
+    { name: "Problème", value: typeLabel, inline: true },
+    ...(volume ? [{ name: "Tome", value: String(volume), inline: true }] : []),
+    { name: kind === "new" ? "Signalé par" : "Réponse de", value: userName, inline: true },
+    { name: "Message", value: truncate(message), inline: false },
+  ];
+  if (appUrl) {
+    fields.push({ name: "Liens", value: `[💬 Répondre](${appUrl}/issues/${issueId})`, inline: false });
+  }
+
+  const thumbnailUrl = toHttpsUrl(coverUrl);
+  await postToDiscord({
+    embeds: [
+      {
+        title: `${kind === "new" ? "Problème signalé" : "Nouvelle réponse"} : ${title}`.slice(0, 256),
+        color: ISSUE_COLOR,
+        fields,
+        ...(thumbnailUrl && { thumbnail: { url: thumbnailUrl } }),
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  });
+}
