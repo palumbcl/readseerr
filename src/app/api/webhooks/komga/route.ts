@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { isKomgaConfigured } from "@/lib/komga";
 import { fulfillByTitles, syncLibrary } from "@/lib/media";
 import { stripVolumeNumber } from "@/lib/titles";
+import { getConfig } from "@/lib/config";
 
 export async function POST(request: NextRequest) {
   try {
     // 1. Sécurité : Vérification du token
     const authHeader = request.headers.get("authorization");
     const urlToken = request.nextUrl.searchParams.get("token");
-    const expectedToken = process.env.KOMGA_WEBHOOK_SECRET;
+    const expectedToken = getConfig("komgaWebhookSecret");
 
     if (!expectedToken) {
       console.error("KOMGA_WEBHOOK_SECRET n'est pas défini dans les variables d'environnement.");

@@ -6,15 +6,17 @@ import AdminRequests from "@/components/admin/AdminRequests";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminLibrary from "@/components/admin/AdminLibrary";
 import IssueList from "@/components/IssueList";
+import AdminSettings from "@/components/admin/AdminSettings";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
-type Tab = "requests" | "issues" | "users" | "library";
+type Tab = "requests" | "issues" | "users" | "library" | "settings";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "requests", label: "Demandes" },
   { value: "issues", label: "Signalements" },
   { value: "users", label: "Utilisateurs" },
   { value: "library", label: "Bibliothèque" },
+  { value: "settings", label: "Paramètres" },
 ];
 
 export default function AdminPage() {
@@ -71,6 +73,7 @@ export default function AdminPage() {
         {tab === "issues" && <IssueList scope="all" />}
         {tab === "users" && <AdminUsers />}
         {tab === "library" && <AdminLibrary />}
+        {tab === "settings" && <AdminSettings />}
       </div>
     </div>
   );

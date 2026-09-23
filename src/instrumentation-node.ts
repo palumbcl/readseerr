@@ -1,9 +1,14 @@
+import { getConfig } from "@/lib/config";
 import { isKomgaConfigured } from "@/lib/komga";
 import { syncLibrary } from "@/lib/media";
 import { warmDiscoverCache } from "@/lib/discover";
 import { checkFollowedReleases } from "@/lib/follows";
 
 const RELEASE_CHECK_HOURS = 12;
+
+export function getSyncIntervalMinutes(): number {
+  return Math.max(5, parseInt(getConfig("komgaSyncIntervalMinutes") || "30", 10) || 30);
+}
 
 async function runReleaseCheck() {
   try {
@@ -27,13 +32,15 @@ export function startLibrarySyncSchedule() {
   setTimeout(() => void runReleaseCheck(), 2 * 60_000);
   setInterval(() => void runReleaseCheck(), RELEASE_CHECK_HOURS * 3_600_000);
 
-  if (!isKomgaConfigured()) return;
+  // Komga : intervalle relu à chaque passage (modifiable dans /admin, pris en compte sans redémarrage).
+  // Sans Komga configuré, chaque passage est ignoré : la connexion peut être ajoutée plus tard.
+  const scheduleSync = (delayMs: number) => {
+    setTimeout(async () => {
+      if (isKomgaConfigured()) await syncLibrary();
+      scheduleSync(getSyncIntervalMinutes() * 60_000);
+    }, delayMs);
+  };
+  scheduleSync(15_000);
 
-  const intervalMinutes = Math.max(5, parseInt(process.env.KOMGA_SYNC_INTERVAL_MINUTES || "30", 10) || 30);
-
-  // Premier passage peu après le démarrage, pour ne pas ralentir la mise en route
-  setTimeout(() => void syncLibrary(), 15_000);
-  setInterval(() => void syncLibrary(), intervalMinutes * 60_000);
-
-  console.log(`Synchronisation Komga planifiée toutes les ${intervalMinutes} min.`);
+  console.log(`Synchronisation Komga planifiée toutes les ${getSyncIntervalMinutes()} min.`);
 }

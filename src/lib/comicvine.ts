@@ -6,13 +6,14 @@
 
 import type { MediaDetail, MediaResult, VolumeInfo, SearchPage } from "@/lib/types";
 import { isEnglishOrFrenchPublisher } from "@/lib/publishers";
+import { getConfig } from "@/lib/config";
 
 const COMICVINE_BASE = "https://comicvine.gamespot.com/api";
 const USER_AGENT = "ReadSeerr/1.0";
 
 function getApiKey(): string {
-  const key = process.env.COMICVINE_API_KEY;
-  if (!key) throw new Error("COMICVINE_API_KEY is not set in environment variables.");
+  const key = getConfig("comicvineApiKey");
+  if (!key) throw new Error("La clé API ComicVine n'est pas configurée (Administration > Paramètres ou COMICVINE_API_KEY).");
   return key;
 }
 

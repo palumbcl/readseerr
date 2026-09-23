@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { getConfig } from "@/lib/config";
 
 export async function sendEmail({
   to,
@@ -11,7 +12,10 @@ export async function sendEmail({
   text: string;
   html?: string;
 }) {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  const SMTP_HOST = getConfig("smtpHost");
+  const SMTP_PORT = getConfig("smtpPort");
+  const SMTP_USER = getConfig("smtpUser");
+  const SMTP_PASS = getConfig("smtpPass");
 
   if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
     console.warn("SMTP variables not set, email will not be sent.");

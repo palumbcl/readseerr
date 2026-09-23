@@ -55,9 +55,8 @@ export default function AdminLibrary() {
 
       {!info.configured ? (
         <p className="request-note">
-          Komga n&apos;est pas configuré : renseignez <code>KOMGA_URL</code> et <code>KOMGA_API_KEY</code> (ou{" "}
-          <code>KOMGA_USER</code> / <code>KOMGA_PASSWORD</code>) pour afficher les badges de disponibilité et clore
-          automatiquement les demandes.
+          Komga n&apos;est pas configuré : renseignez son adresse et une clé API dans l&apos;onglet « Paramètres » pour
+          afficher les badges de disponibilité et clore automatiquement les demandes.
         </p>
       ) : (
         <>
@@ -85,9 +84,8 @@ export default function AdminLibrary() {
           {info.lastError && <p className="form-error">Dernière erreur : {info.lastError}</p>}
 
           <p className="request-note">
-            La synchronisation tourne automatiquement (toutes les 30 min par défaut, variable{" "}
-            <code>KOMGA_SYNC_INTERVAL_MINUTES</code>) et à chaque webhook Komga. Une demande passe en
-            « disponible » quand tous ses tomes sont présents.
+            La synchronisation tourne automatiquement (intervalle réglable dans « Paramètres », 30 min par défaut) et à
+            chaque webhook Komga. Une demande passe en « disponible » quand tous ses tomes sont présents.
           </p>
 
           <button className="btn btn-primary" onClick={syncNow} disabled={syncing || info.running} style={{ marginTop: 16 }}>

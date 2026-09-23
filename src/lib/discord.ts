@@ -1,5 +1,6 @@
 import type { MediaType } from "@/lib/types";
 import type { KomgaSeriesMatch } from "@/lib/komga";
+import { getConfig } from "@/lib/config";
 
 const TYPE_STYLES: Record<MediaType, { label: string; color: number }> = {
   manga: { label: "🇯🇵 Manga", color: 0xe11d48 },
@@ -51,7 +52,7 @@ function getAppLink(mediaType: MediaType, externalId: string): string | undefine
 
 /** Ouvre la page de recherche Prowlarr pré-remplie avec le titre. */
 export function getProwlarrSearchLink(title: string): string | undefined {
-  const prowlarrUrl = process.env.PROWLARR_URL?.replace(/\/$/, "");
+  const prowlarrUrl = getConfig("prowlarrUrl")?.replace(/\/$/, "");
   return prowlarrUrl ? `${prowlarrUrl}/search?query=${encodeURIComponent(title)}` : undefined;
 }
 
@@ -92,7 +93,7 @@ function formatDate(date: Date): string {
 }
 
 async function postToDiscord(payload: unknown) {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  const webhookUrl = getConfig("discordWebhookUrl");
 
   if (!webhookUrl) {
     return;

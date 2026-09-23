@@ -1,3 +1,5 @@
+import { getConfig } from "@/lib/config";
+
 export interface KomgaSeriesMatch {
   name: string;
   booksCount: number;
@@ -23,7 +25,9 @@ interface KomgaBook {
 }
 
 function getKomgaAuthHeaders(): Record<string, string> | null {
-  const { KOMGA_API_KEY, KOMGA_USER, KOMGA_PASSWORD } = process.env;
+  const KOMGA_API_KEY = getConfig("komgaApiKey");
+  const KOMGA_USER = getConfig("komgaUser");
+  const KOMGA_PASSWORD = getConfig("komgaPassword");
 
   if (KOMGA_API_KEY) return { "X-API-Key": KOMGA_API_KEY };
   if (KOMGA_USER && KOMGA_PASSWORD) {
@@ -33,14 +37,14 @@ function getKomgaAuthHeaders(): Record<string, string> | null {
 }
 
 function getKomgaBaseUrl(): string | null {
-  return process.env.KOMGA_URL?.replace(/\/$/, "") || null;
+  return getConfig("komgaUrl")?.replace(/\/$/, "") || null;
 }
 
 /** URL de la série dans l'interface Komga (publique si Komga est joint via le réseau interne). */
 export function getKomgaSeriesUrl(seriesId: string): string | null {
   const baseUrl = getKomgaBaseUrl();
   if (!baseUrl) return null;
-  return `${(process.env.KOMGA_PUBLIC_URL || baseUrl).replace(/\/$/, "")}/series/${seriesId}`;
+  return `${(getConfig("komgaPublicUrl") || baseUrl).replace(/\/$/, "")}/series/${seriesId}`;
 }
 
 export function isKomgaConfigured(): boolean {
@@ -151,13 +155,13 @@ export async function fetchKomgaSeriesThumbnail(seriesId: string): Promise<Respo
  * Retourne null si Komga n'est pas configuré ou injoignable (la notification ne doit jamais en dépendre).
  */
 export async function findKomgaSeries(title: string): Promise<KomgaSeriesMatch[] | null> {
-  const baseUrl = process.env.KOMGA_URL?.replace(/\/$/, "");
+  const baseUrl = getKomgaBaseUrl();
   const headers = getKomgaAuthHeaders();
 
   if (!baseUrl || !headers) return null;
 
   // Lien cliquable dans Discord : l'URL publique si Komga est joint via le réseau interne
-  const publicUrl = (process.env.KOMGA_PUBLIC_URL || baseUrl).replace(/\/$/, "");
+  const publicUrl = (getConfig("komgaPublicUrl") || baseUrl).replace(/\/$/, "");
 
   try {
     const params = new URLSearchParams({ search: title, size: "5" });
