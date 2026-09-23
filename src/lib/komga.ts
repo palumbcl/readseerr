@@ -121,13 +121,16 @@ export interface KomgaRecentSeries {
   updatedAt: string | null;
 }
 
-/** Séries récemment ajoutées ou complétées dans la bibliothèque. */
-export async function fetchLatestKomgaSeries(size = 20): Promise<KomgaRecentSeries[]> {
+/** Séries récemment ajoutées ou complétées dans la bibliothèque (page à partir de 1). */
+export async function fetchLatestKomgaSeries(
+  size = 20,
+  page = 1
+): Promise<{ items: KomgaRecentSeries[]; hasMore: boolean }> {
   const data = await komgaGet<KomgaPage<KomgaSeries & { lastModified?: string }>>(
-    `/api/v1/series/latest?size=${size}&deleted=false`,
+    `/api/v1/series/latest?size=${size}&page=${page - 1}&deleted=false`,
     8000
   );
-  return (data.content ?? []).map((s) => ({
+  const items = (data.content ?? []).map((s) => ({
     id: s.id,
     name: s.metadata?.title || s.name,
     booksCount: s.booksCount,
@@ -135,6 +138,7 @@ export async function fetchLatestKomgaSeries(size = 20): Promise<KomgaRecentSeri
     thumbnailUrl: `/api/library/thumbnail/${encodeURIComponent(s.id)}`,
     updatedAt: s.lastModified ?? null,
   }));
+  return { items, hasMore: data.last === false };
 }
 
 /** Couverture d'une série Komga (image brute), null si indisponible. */

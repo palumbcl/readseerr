@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchManga } from "@/lib/anilist";
-import { searchComics } from "@/lib/comicvine";
+import { searchManga, searchMangaByAuthor } from "@/lib/anilist";
+import { searchComics, searchComicsByAuthor } from "@/lib/comicvine";
 import { searchCache } from "@/lib/cache";
 import { annotateAvailability } from "@/lib/library";
 import type { SearchPage } from "@/lib/types";
@@ -15,6 +15,14 @@ async function withAvailability(page: SearchPage): Promise<SearchPage> {
     console.error("Availability annotation error:", error);
     return page;
   }
+}
+
+/** Œuvres des auteurs dont le nom correspond à la recherche (une seule page). */
+async function searchByAuthor(type: string, query: string): Promise<SearchPage | null> {
+  const search = type === "manga" ? searchMangaByAuthor : type === "comic" ? searchComicsByAuthor : null;
+  if (!search) return null;
+  const { authors, results } = await search(query);
+  return { results, hasMore: false, authors };
 }
 
 function searchSource(type: string, query: string, page: number): Promise<SearchPage> | null {
@@ -41,9 +49,27 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Recherche par auteur (?author=1) : œuvres des mangakas / auteurs correspondants
+  if (searchParams.get("author") === "1") {
+    // Version dans la clé : invalide les résultats calculés avec une ancienne règle de classement
+    const authorKey = `author-v2:${type}:${query.toLowerCase().trim()}`;
+    try {
+      const cachedAuthor = (await searchCache.get(authorKey)) as SearchPage | null;
+      if (cachedAuthor) return NextResponse.json(await withAvailability(cachedAuthor));
+      const result = await searchByAuthor(type ?? "", query.trim());
+      if (!result) return NextResponse.json({ error: "Invalid type. Use 'manga' or 'comic'." }, { status: 400 });
+      await searchCache.set(authorKey, result);
+      return NextResponse.json(await withAvailability(result));
+    } catch (error) {
+      // Recherche secondaire : un échec ne doit jamais bloquer les résultats par titre
+      console.error(`Author search error [${type}]:`, error);
+      return NextResponse.json(EMPTY_PAGE);
+    }
+  }
+
   // Check cache
   const cacheKey = `search:${type || "all"}:${page}:${query.toLowerCase().trim()}`;
-  const cached = searchCache.get(cacheKey) as SearchPage | null;
+  const cached = (await searchCache.get(cacheKey)) as SearchPage | null;
   if (cached) {
     return NextResponse.json(await withAvailability(cached));
   }
@@ -76,7 +102,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Cache results (sans la disponibilité, qui change à chaque demande ou ajout dans Komga)
-    searchCache.set(cacheKey, result);
+    await searchCache.set(cacheKey, result);
 
     return NextResponse.json(await withAvailability(result));
   } catch (error) {

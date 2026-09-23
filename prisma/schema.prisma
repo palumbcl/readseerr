@@ -157,6 +157,15 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+/// Cache persistant des réponses des API externes (AniList, ComicVine) : survit aux redémarrages.
+model CacheEntry {
+  key       String   @id
+  value     String   // JSON
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
 /// Copie locale des séries Komga, rafraîchie par la synchronisation (badges de disponibilité).
 model LibrarySeries {
   id         String   @id // identifiant Komga

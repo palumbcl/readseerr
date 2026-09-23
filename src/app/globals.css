@@ -1798,6 +1798,17 @@ input {
 .hero.hero-compact {
   min-height: auto;
   padding: 120px 20px 48px;
+  /* La liste de suggestions doit déborder de l'en-tête et passer au-dessus des rangées */
+  overflow: visible;
+  z-index: 20;
+}
+
+/* Halo ramené aux dimensions de l'en-tête : plus besoin de le rogner */
+.hero.hero-compact::before {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .discover {
@@ -2285,4 +2296,46 @@ input {
 .settings-webhook-url .btn-link {
   flex-shrink: 0;
   font-size: 0.75rem;
+}
+
+.discover-row-see-all {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-primary-hover);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  transition: background var(--transition-fast);
+}
+
+.discover-row-see-all:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  padding: 20px 0;
+}
+
+.library-grid .media-card {
+  display: block;
+  text-decoration: none;
+}
+
+@media (max-width: 600px) {
+  .library-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+}
+
+.search-notice-author {
+  border-color: rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.search-notice-author strong {
+  color: var(--text-primary);
 }

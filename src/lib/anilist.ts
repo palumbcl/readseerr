@@ -5,6 +5,7 @@
  */
 
 import type { MediaResult, MediaDetail, VolumeInfo, SearchPage } from "@/lib/types";
+import { personNameMatches } from "@/lib/titles";
 
 const ANILIST_URL = "https://graphql.anilist.co";
 
@@ -14,6 +15,7 @@ query ($search: String!, $page: Int, $perPage: Int) {
     pageInfo { hasNextPage lastPage total }
     media(search: $search, type: MANGA, sort: POPULARITY_DESC) {
       id
+      popularity
       title {
         romaji
         english
@@ -83,6 +85,9 @@ interface AniListDate {
 
 interface AniListMedia {
   id: number;
+  isAdult?: boolean;
+  /** Nombre de membres AniList qui suivent la série */
+  popularity?: number | null;
   title: { romaji: string | null; english: string | null; native: string | null };
   coverImage: { large: string | null; extraLarge: string | null };
   bannerImage: string | null;
@@ -163,6 +168,7 @@ function mediaToResult(media: AniListMedia): MediaResult {
     author: getAuthor(media.staff),
     volumeCount: media.volumes,
     altTitles: getAltTitles(media),
+    popularity: media.popularity ?? null,
   };
 }
 
@@ -226,8 +232,9 @@ export async function getMangaDetails(id: string): Promise<MediaDetail> {
 }
 
 const DISCOVER_QUERY = `
-query ($perPage: Int, $sort: [MediaSort], $startDateGreater: FuzzyDateInt, $popularityGreater: Int) {
-  Page(page: 1, perPage: $perPage) {
+query ($page: Int, $perPage: Int, $sort: [MediaSort], $startDateGreater: FuzzyDateInt, $popularityGreater: Int) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo { hasNextPage }
     media(
       type: MANGA
       isAdult: false
@@ -238,6 +245,7 @@ query ($perPage: Int, $sort: [MediaSort], $startDateGreater: FuzzyDateInt, $popu
       popularity_greater: $popularityGreater
     ) {
       id
+      popularity
       title {
         romaji
         english
@@ -266,29 +274,33 @@ query ($perPage: Int, $sort: [MediaSort], $startDateGreater: FuzzyDateInt, $popu
 }
 `;
 
-/** Mangas japonais du moment (tendance AniList, sans les webtoons coréens / chinois). */
-export async function getTrendingManga(limit = 20): Promise<MediaResult[]> {
-  const data = await queryAniList<{ Page: { media: AniListMedia[] } }>(DISCOVER_QUERY, {
-    perPage: limit,
-    sort: ["TRENDING_DESC"],
-  });
-  return data.Page.media.map(mediaToResult);
-}
+export type MangaDiscoverKind = "trending" | "popular" | "new";
 
-/** Séries lancées depuis moins d'un an et déjà suivies par une communauté conséquente. */
-export async function getNewManga(limit = 20): Promise<MediaResult[]> {
+/**
+ * Mangas japonais (sans les webtoons coréens / chinois) pour la page Découvrir :
+ * - trending : tendance du moment ;
+ * - popular : les plus suivis, tous temps confondus ;
+ * - new : lancés depuis moins d'un an et déjà suivis par une communauté conséquente.
+ */
+export async function discoverManga(kind: MangaDiscoverKind, page = 1): Promise<SearchPage> {
   const since = new Date();
   since.setFullYear(since.getFullYear() - 1);
   const fuzzyDate = since.getFullYear() * 10000 + (since.getMonth() + 1) * 100 + since.getDate();
 
-  const data = await queryAniList<{ Page: { media: AniListMedia[] } }>(DISCOVER_QUERY, {
-    perPage: limit,
-    sort: ["POPULARITY_DESC"],
-    startDateGreater: fuzzyDate,
-    popularityGreater: 1000,
-  });
+  const data = await queryAniList<{ Page: { pageInfo: { hasNextPage: boolean }; media: AniListMedia[] } }>(
+    DISCOVER_QUERY,
+    {
+      page,
+      perPage: PER_PAGE,
+      sort: [kind === "trending" ? "TRENDING_DESC" : "POPULARITY_DESC"],
+      ...(kind === "new" && { startDateGreater: fuzzyDate, popularityGreater: 1000 }),
+    }
+  );
+
+  let results = data.Page.media.map(mediaToResult);
   // AniList compare des dates approximatives : on écarte ce qui a une année de début plus ancienne
-  return data.Page.media.map(mediaToResult).filter((m) => !m.year || m.year >= since.getFullYear());
+  if (kind === "new") results = results.filter((m) => !m.year || m.year >= since.getFullYear());
+  return { results, hasMore: data.Page.pageInfo.hasNextPage };
 }
 
 const VOLUME_COUNTS_QUERY = `
@@ -316,4 +328,74 @@ export async function getMangaVolumeCounts(ids: string[]): Promise<Map<string, n
     }
   }
   return counts;
+}
+
+const AUTHOR_QUERY = `
+query ($search: String) {
+  Page(page: 1, perPage: 5) {
+    staff(search: $search) {
+      name { full alternative }
+      favourites
+      staffMedia(type: MANGA, perPage: 50, sort: [POPULARITY_DESC]) {
+        nodes {
+          id
+          isAdult
+          popularity
+          title { romaji english native }
+          coverImage { large extraLarge }
+          bannerImage
+          startDate { year }
+          format
+          status
+          description(asHtml: false)
+          volumes
+          chapters
+          genres
+          staff(sort: RELEVANCE, perPage: 3) { edges { role node { name { full } } } }
+        }
+      }
+    }
+  }
+}
+`;
+
+interface AniListStaff {
+  name: { full: string; alternative: string[] };
+  favourites: number;
+  staffMedia: { nodes: AniListMedia[] };
+}
+
+/**
+ * Œuvres des mangakas dont le nom correspond à la recherche ("Eiichiro Oda" -> One Piece…).
+ * AniList orthographie parfois autrement ("Eiichirou") : sans résultat, on retente avec le mot le
+ * plus long puis on garde les personnes dont le nom correspond vraiment.
+ */
+export async function searchMangaByAuthor(query: string): Promise<{ authors: string[]; results: MediaResult[] }> {
+  // Un seul mot ("naruto") : on n'y voit un auteur que s'il est connu, sinon un titre suffit à déclencher
+  // la recherche d'homonymes obscurs. Prénom + nom : la correspondance du nom suffit.
+  const singleWord = query.trim().split(/\s+/).length === 1;
+  const find = async (search: string) =>
+    (await queryAniList<{ Page: { staff: AniListStaff[] } }>(AUTHOR_QUERY, { search })).Page.staff.filter(
+      (s) =>
+        (!singleWord || s.favourites >= 50) &&
+        [s.name.full, ...s.name.alternative].some((name) => personNameMatches(query, name))
+    );
+
+  let staff = await find(query);
+  const words = query.trim().split(/\s+/);
+  if (staff.length === 0 && words.length > 1) {
+    staff = await find([...words].sort((a, b) => b.length - a.length)[0]);
+  }
+
+  const seen = new Set<number>();
+  const results: MediaResult[] = [];
+  for (const person of staff.slice(0, 2)) {
+    for (const media of person.staffMedia.nodes) {
+      if (seen.has(media.id) || media.isAdult) continue;
+      seen.add(media.id);
+      // L'auteur affiché est celui recherché, même s'il n'est pas le premier crédité
+      results.push({ ...mediaToResult(media), author: person.name.full });
+    }
+  }
+  return { authors: staff.slice(0, 2).map((s) => s.name.full), results };
 }

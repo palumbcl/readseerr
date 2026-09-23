@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense, useCallback, useRef, useMemo } from "react";
 import SearchBar from "@/components/SearchBar";
 import MediaGrid from "@/components/MediaGrid";
+import { normalizeTitle, seriesKey } from "@/lib/titles";
 import type { MediaResult, MediaType, SearchPage } from "@/lib/types";
 
 const MEDIA_TYPES = ["manga", "comic"] as const;
@@ -20,13 +21,77 @@ const TYPE_LABELS: Record<MediaType, string> = {
 };
 
 // Sorting is purely client-side, applied once every result has been loaded
-type SortOrder = "relevance" | "newest" | "oldest";
+type SortOrder = "relevance" | "popularity" | "volumes" | "newest" | "oldest" | "title";
 
 const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
   { value: "relevance", label: "Pertinence" },
+  { value: "popularity", label: "Popularité" },
+  { value: "volumes", label: "Nombre de tomes" },
   { value: "newest", label: "Plus récent → plus ancien" },
   { value: "oldest", label: "Plus ancien → plus récent" },
+  { value: "title", label: "Titre (A → Z)" },
 ];
+
+type LibraryFilter = "all" | "available" | "missing";
+
+const LIBRARY_OPTIONS: { value: LibraryFilter; label: string }[] = [
+  { value: "all", label: "Tout" },
+  { value: "available", label: "Disponible dans la bibliothèque" },
+  { value: "missing", label: "Pas encore disponible" },
+];
+
+const isInLibrary = (r: MediaResult) =>
+  r.availability?.status === "available" || r.availability?.status === "partially_available";
+
+/** Mots vides ignorés pour juger si un titre correspond à la recherche */
+const STOP_WORDS = new Set(["the", "a", "an", "of", "and", "le", "la", "les", "l", "un", "une", "de", "des", "du", "d", "et"]);
+
+function queryTokens(query: string): string[] {
+  return normalizeTitle(query)
+    .split(" ")
+    .filter((t) => t && !STOP_WORDS.has(t));
+}
+
+/** Le titre (ou un titre alternatif, ou l'auteur) contient-il tous les mots de la recherche ? */
+function matchesQuery(r: MediaResult, tokens: string[]): boolean {
+  if (tokens.length === 0) return true;
+  return [r.title, ...(r.altTitles ?? []), r.author ?? ""].some((title) => {
+    const words = normalizeTitle(title).split(" ");
+    return tokens.every((token) => words.some((word) => word.startsWith(token)));
+  });
+}
+
+/**
+ * Échelle commune mangas / comics : AniList compte environ 100 fois plus de membres que les listes
+ * de lecture d'Open Library. Approximation, mais bien plus parlante qu'un simple entrelacement.
+ */
+const OPEN_LIBRARY_WEIGHT = 100;
+
+/**
+ * Popularité : membres AniList pour les mangas ; lecteurs Open Library (listes de lecture + notes,
+ * regroupés par série) pour les comics, que ComicVine ne classe pas.
+ * La pertinence reste prioritaire : les titres contenant tous les mots de la recherche passent
+ * d'abord, puis les autres ("civil war" : les Civil War de Marvel avant "The Forever War").
+ * Les œuvres sans donnée suivent dans l'ordre de pertinence. Open Library ne distinguant pas les
+ * éditions d'un même titre, à score égal la série la plus longue (la série historique) passe devant.
+ */
+function sortByPopularity(list: MediaResult[], comicScores: Record<string, number>, query: string): MediaResult[] {
+  const score = (r: MediaResult) =>
+    r.type === "manga" ? r.popularity ?? 0 : (comicScores[seriesKey(r.title)] ?? 0) * OPEN_LIBRARY_WEIGHT;
+
+  const rankGroup = (group: MediaResult[]) => [
+    ...group
+      .filter((r) => score(r) > 0)
+      .sort((a, b) => score(b) - score(a) || (b.volumeCount ?? 0) - (a.volumeCount ?? 0)),
+    ...group.filter((r) => score(r) <= 0),
+  ];
+
+  const tokens = queryTokens(query);
+  return [
+    ...rankGroup(list.filter((r) => matchesQuery(r, tokens))),
+    ...rankGroup(list.filter((r) => !matchesQuery(r, tokens))),
+  ];
+}
 
 /**
  * Every page of every source is loaded up front so sorting and filtering see the
@@ -81,6 +146,11 @@ function SearchContent() {
   const [activeFilters, setActiveFilters] = useState<Set<MediaType | "all">>(new Set(["all"]));
   const [sortOrder, setSortOrder] = useState<SortOrder>("relevance");
   const [authorFilter, setAuthorFilter] = useState("");
+  const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
+  // Popularité des comics (Open Library), chargée en parallèle des résultats
+  const [comicScores, setComicScores] = useState<Record<string, number>>({});
+  // Auteurs dont le nom correspond à la recherche : leurs œuvres passent en tête
+  const [matchedAuthors, setMatchedAuthors] = useState<string[]>([]);
   const [displayCount, setDisplayCount] = useState(DISPLAY_STEP);
 
   // Pages arrive out of order (parallel fetches): keep them keyed by source/page and
@@ -182,10 +252,30 @@ function SearchContent() {
     setActiveFilters(new Set(["all"]));
     setSortOrder("relevance");
     setAuthorFilter("");
+    setLibraryFilter("all");
     setDisplayCount(DISPLAY_STEP);
 
+    setComicScores({});
+    setMatchedAuthors([]);
     if (query.length >= 2) {
       MEDIA_TYPES.forEach((type) => loadSource(type, generation, controller.signal));
+
+      // Recherche par auteur, en parallèle : ses œuvres forment un bloc placé avant la page 1
+      MEDIA_TYPES.forEach((type) => {
+        fetch(`/api/search?q=${encodeURIComponent(query)}&type=${type}&author=1`, { signal: controller.signal })
+          .then((response) => (response.ok ? response.json() : null))
+          .then((data: SearchPage | null) => {
+            if (!data || generation !== generationRef.current || data.results.length === 0) return;
+            chunksRef.current.set(`${type}:author`, { type, page: 0, items: data.results });
+            setMatchedAuthors((prev) => [...new Set([...prev, ...(data.authors ?? [])])]);
+            rebuildResults();
+          })
+          .catch(() => undefined);
+      });
+      fetch(`/api/popularity?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+        .then((response) => (response.ok ? response.json() : { scores: {} }))
+        .then((data) => generation === generationRef.current && setComicScores(data.scores ?? {}))
+        .catch(() => undefined);
     }
 
     return () => controller.abort();
@@ -194,7 +284,7 @@ function SearchContent() {
   // Back to the top of the list whenever the view changes
   useEffect(() => {
     setDisplayCount(DISPLAY_STEP);
-  }, [activeFilters, authorFilter, sortOrder]);
+  }, [activeFilters, authorFilter, sortOrder, libraryFilter]);
 
   const handleFilterToggle = useCallback((value: MediaType | "all") => {
     setActiveFilters((prev) => {
@@ -240,7 +330,18 @@ function SearchContent() {
       list = list.filter((r) => r.author === authorFilter);
     }
 
-    if (sortOrder !== "relevance") {
+    if (libraryFilter !== "all") {
+      list = list.filter((r) => (libraryFilter === "available" ? isInLibrary(r) : !isInLibrary(r)));
+    }
+
+    if (sortOrder === "popularity") {
+      list = sortByPopularity(list, comicScores, query);
+    } else if (sortOrder === "volumes") {
+      // Nombre inconnu en dernier
+      list = [...list].sort((a, b) => (b.volumeCount ?? -1) - (a.volumeCount ?? -1));
+    } else if (sortOrder === "title") {
+      list = [...list].sort((a, b) => a.title.localeCompare(b.title, "fr", { sensitivity: "base" }));
+    } else if (sortOrder !== "relevance") {
       const dir = sortOrder === "newest" ? -1 : 1;
       // Results without a year always go last
       list = [...list].sort((a, b) => {
@@ -252,7 +353,7 @@ function SearchContent() {
     }
 
     return list;
-  }, [results, activeFilters, authorFilter, sortOrder]);
+  }, [results, activeFilters, authorFilter, sortOrder, libraryFilter, comicScores, query]);
 
   const displayedResults = useMemo(
     () => filteredResults.slice(0, displayCount),
@@ -323,6 +424,12 @@ function SearchContent() {
           </div>
         )}
 
+        {matchedAuthors.length > 0 && (
+          <div className="search-notice search-notice-author">
+            ✍️ Œuvres de <strong>{matchedAuthors.join(", ")}</strong> affichées en premier.
+          </div>
+        )}
+
         {allDone && cappedSources.length > 0 && (
           <div className="search-notice">
             Cette recherche est très large : seuls les{" "}
@@ -374,9 +481,26 @@ function SearchContent() {
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as SortOrder)}
                 disabled={!allDone}
-                title={allDone ? undefined : "Disponible une fois tous les résultats chargés"}
+                title={
+                  !allDone
+                    ? "Disponible une fois tous les résultats chargés"
+                    : sortOrder === "popularity"
+                      ? "Mangas : lecteurs AniList · Comics & BD : lecteurs Open Library"
+                      : undefined
+                }
               >
                 {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="filter-select">
+              <span className="filter-select-label">Bibliothèque</span>
+              <select value={libraryFilter} onChange={(e) => setLibraryFilter(e.target.value as LibraryFilter)}>
+                {LIBRARY_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

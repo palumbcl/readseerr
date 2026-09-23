@@ -17,6 +17,8 @@ export interface MediaResult {
   volumeCount?: number | null;
   /** Other known titles (romaji, English…), used to match the Komga library */
   altTitles?: string[];
+  /** AniList members following the series (manga only), used for "popularity" sorting */
+  popularity?: number | null;
   /** Library / request state, added by the API (never cached) */
   availability?: Availability | null;
 }
@@ -76,6 +78,8 @@ export interface SearchPage {
   totalPages?: number;
   /** Total number of matches reported by the source, before any local filtering */
   total?: number;
+  /** Recherche par auteur : noms des auteurs trouvés */
+  authors?: string[];
 }
 
 /** Full details returned by /api/details */
@@ -154,17 +158,40 @@ export interface LibraryRecentItem {
   updatedAt: string | null;
 }
 
+export type DiscoverRowId =
+  | "library"
+  | "trending-manga"
+  | "popular-manga"
+  | "recent-comics"
+  | "popular-comics"
+  | "new-manga"
+  | "recent-requests";
+
 export interface DiscoverRow {
-  id: "trending-manga" | "new-manga" | "recent-comics" | "recent-requests";
+  id: Exclude<DiscoverRowId, "library">;
   title: string;
   subtitle: string;
   items: MediaResult[];
+  /** D'autres résultats sont visibles via « Voir tout » */
+  hasMore: boolean;
+}
+
+/** GET /api/discover/[row] : page complète d'une rangée */
+export interface DiscoverRowPage {
+  id: DiscoverRowId;
+  title: string;
+  subtitle: string;
+  kind: "media" | "library";
+  items: MediaResult[];
+  library: LibraryRecentItem[];
+  hasMore: boolean;
 }
 
 /** GET /api/discover */
 export interface DiscoverResponse {
   /** null si Komga n'est pas configuré ou injoignable */
   library: LibraryRecentItem[] | null;
+  libraryHasMore: boolean;
   rows: DiscoverRow[];
 }
 

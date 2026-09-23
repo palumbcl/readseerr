@@ -3,6 +3,7 @@ import { isKomgaConfigured } from "@/lib/komga";
 import { syncLibrary } from "@/lib/media";
 import { warmDiscoverCache } from "@/lib/discover";
 import { checkFollowedReleases } from "@/lib/follows";
+import { purgeExpiredCache } from "@/lib/cache";
 
 const RELEASE_CHECK_HOURS = 12;
 
@@ -24,9 +25,14 @@ async function runReleaseCheck() {
  * et synchronisation périodique de la bibliothèque Komga (badges, clôture des demandes).
  */
 export function startLibrarySyncSchedule() {
-  // Page Découvrir : cache rafraîchi avant son expiration (1 h 05) pour rester toujours chaud
+  // Page Découvrir : rangées rechargées peu avant leur expiration, pour rester toujours chaudes
   setTimeout(() => void warmDiscoverCache(), 10_000);
-  setInterval(() => void warmDiscoverCache(), 55 * 60_000);
+  setInterval(() => void warmDiscoverCache(), 10 * 60_000);
+
+  // Cache persistant : ménage des entrées expirées toutes les 6 h
+  setInterval(() => {
+    purgeExpiredCache().catch((error) => console.error("Purge du cache échouée:", error));
+  }, 6 * 3_600_000);
 
   // Séries suivies : nouveaux numéros parus (ComicVine / AniList), deux fois par jour
   setTimeout(() => void runReleaseCheck(), 2 * 60_000);

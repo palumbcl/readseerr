@@ -63,7 +63,11 @@ export default function HomePage() {
         )}
 
         {discover?.library && discover.library.length > 0 && (
-          <DiscoverRow title="Ajouts récents dans la bibliothèque" subtitle="Nouvelles séries et nouveaux tomes dans Komga">
+          <DiscoverRow
+            title="Ajouts récents dans la bibliothèque"
+            subtitle="Nouvelles séries et nouveaux tomes dans Komga"
+            href={discover.libraryHasMore ? "/discover/library" : undefined}
+          >
             {discover.library.map((item) => (
               <LibraryCard key={item.id} item={item} />
             ))}
@@ -71,7 +75,12 @@ export default function HomePage() {
         )}
 
         {discover?.rows.map((row) => (
-          <DiscoverRow key={row.id} title={row.title} subtitle={row.subtitle}>
+          <DiscoverRow
+            key={row.id}
+            title={row.title}
+            subtitle={row.subtitle}
+            href={row.hasMore ? `/discover/${row.id}` : undefined}
+          >
             {row.items.map((media) => (
               <MediaCard key={`${media.type}-${media.id}`} media={media} />
             ))}

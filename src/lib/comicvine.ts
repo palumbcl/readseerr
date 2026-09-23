@@ -6,6 +6,8 @@
 
 import type { MediaDetail, MediaResult, VolumeInfo, SearchPage } from "@/lib/types";
 import { isEnglishOrFrenchPublisher } from "@/lib/publishers";
+import { personNameMatches, seriesKey } from "@/lib/titles";
+import { getAuthorWorkScores, seriesScore } from "@/lib/comic-popularity";
 import { getConfig } from "@/lib/config";
 
 const COMICVINE_BASE = "https://comicvine.gamespot.com/api";
@@ -165,28 +167,30 @@ interface CVIssue {
 
 /**
  * Séries ayant eu un numéro en magasin ces dernières semaines (éditeurs anglais / français),
- * de la plus récente sortie à la plus ancienne. Deux appels ComicVine au total.
+ * de la plus récente sortie à la plus ancienne. Deux appels ComicVine par page de 100 numéros.
  */
-export async function getRecentComicVolumes(limit = 20, days = 21): Promise<MediaResult[]> {
+export async function getRecentComicVolumes(page = 1, days = 21): Promise<SearchPage> {
   const apiKey = getApiKey();
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   const from = new Date(Date.now() - days * 86_400_000);
+  const offset = (page - 1) * 100;
 
-  const issuesUrl = `${COMICVINE_BASE}/issues/?api_key=${apiKey}&format=json&sort=store_date:desc&limit=100&filter=store_date:${iso(from)}|${iso(new Date())}&field_list=volume,store_date`;
-  const issues: CVIssue[] = (await (await fetchWithRetry(issuesUrl)).json()).results ?? [];
+  const issuesUrl = `${COMICVINE_BASE}/issues/?api_key=${apiKey}&format=json&sort=store_date:desc&limit=100&offset=${offset}&filter=store_date:${iso(from)}|${iso(new Date())}&field_list=volume,store_date`;
+  const issuesData = await (await fetchWithRetry(issuesUrl)).json();
+  const issues: CVIssue[] = issuesData.results ?? [];
+  const hasMore = offset + issues.length < (issuesData.number_of_total_results ?? 0);
 
   // Une entrée par série, dans l'ordre des sorties
   const volumeIds = [...new Set(issues.map((issue) => issue.volume.id))];
-  if (volumeIds.length === 0) return [];
+  if (volumeIds.length === 0) return { results: [], hasMore: false };
 
   const volumesUrl = `${COMICVINE_BASE}/volumes/?api_key=${apiKey}&format=json&limit=100&filter=id:${volumeIds.join("|")}&field_list=id,name,start_year,image,publisher,count_of_issues`;
   const volumes: CVSearchResult[] = (await (await fetchWithRetry(volumesUrl)).json()).results ?? [];
   const byId = new Map(volumes.map((vol) => [vol.id, vol]));
 
-  return volumeIds
+  const results = volumeIds
     .map((id) => byId.get(id))
     .filter((vol): vol is CVSearchResult => Boolean(vol) && isEnglishOrFrenchPublisher(vol?.publisher?.name))
-    .slice(0, limit)
     .map((vol) => ({
       id: String(vol.id),
       title: vol.name || "Unknown",
@@ -197,6 +201,7 @@ export async function getRecentComicVolumes(limit = 20, days = 21): Promise<Medi
       author: null,
       volumeCount: vol.count_of_issues || null,
     }));
+  return { results, hasMore };
 }
 
 /** Nombre de numéros actuel de plusieurs séries (1 appel ComicVine par tranche de 100). */
@@ -211,4 +216,61 @@ export async function getComicIssueCounts(ids: string[]): Promise<Map<string, nu
     for (const vol of volumes) counts.set(String(vol.id), vol.count_of_issues);
   }
   return counts;
+}
+
+/** Séries ComicVine par identifiant, dans l'ordre donné (1 appel par tranche de 100). */
+export async function getComicVolumesByIds(ids: string[]): Promise<MediaResult[]> {
+  const apiKey = getApiKey();
+  const byId = new Map<string, CVSearchResult>();
+
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100);
+    const url = `${COMICVINE_BASE}/volumes/?api_key=${apiKey}&format=json&limit=100&filter=id:${chunk.join("|")}&field_list=id,name,start_year,image,publisher,count_of_issues`;
+    const volumes: CVSearchResult[] = (await (await fetchWithRetry(url)).json()).results ?? [];
+    for (const vol of volumes) byId.set(String(vol.id), vol);
+  }
+
+  return ids
+    .map((id) => byId.get(id))
+    .filter((vol): vol is CVSearchResult => Boolean(vol))
+    .map((vol) => ({
+      id: String(vol.id),
+      title: vol.name?.trim() || "Unknown",
+      year: vol.start_year ? parseInt(vol.start_year, 10) : null,
+      coverUrl: vol.image?.super_url || vol.image?.medium_url || null,
+      type: "comic" as const,
+      publisher: vol.publisher?.name || null,
+      author: null,
+      volumeCount: vol.count_of_issues || null,
+    }));
+}
+
+/**
+ * Séries des auteurs / dessinateurs dont le nom correspond à la recherche ("Goscinny" -> Astérix…).
+ * Recherche de personnes, puis de leurs séries (au plus 200), en anglais / français.
+ * ComicVine ne dit pas quelle part d'une série l'auteur a signée : les séries sont classées par
+ * lecteurs Open Library de ses œuvres, ce qui fait passer Watchmen devant les magazines
+ * (2000 AD, Detective Comics…) où il n'a signé que quelques histoires.
+ */
+export async function searchComicsByAuthor(query: string): Promise<{ authors: string[]; results: MediaResult[] }> {
+  const apiKey = getApiKey();
+  const searchUrl = `${COMICVINE_BASE}/search/?api_key=${apiKey}&format=json&resources=person&query=${encodeURIComponent(query)}&limit=5&field_list=id,name`;
+  const people: { id: number; name: string }[] = (await (await fetchWithRetry(searchUrl)).json()).results ?? [];
+  const person = people.find((p) => personNameMatches(query, p.name));
+  if (!person) return { authors: [], results: [] };
+
+  const personUrl = `${COMICVINE_BASE}/person/4040-${person.id}/?api_key=${apiKey}&format=json&field_list=volume_credits`;
+  const credits: { id: number }[] = (await (await fetchWithRetry(personUrl)).json()).results?.volume_credits ?? [];
+
+  const [volumes, scores] = await Promise.all([
+    getComicVolumesByIds(credits.slice(0, 200).map((v) => String(v.id))),
+    getAuthorWorkScores(person.name).catch(() => ({}) as Record<string, number>),
+  ]);
+  const score = (title: string) => seriesScore(seriesKey(title), scores);
+  const results = volumes
+    // Éditeur inconnu accepté : certaines éditions françaises n'en ont pas (L'Arabe du futur)
+    .filter((vol) => !vol.publisher || isEnglishOrFrenchPublisher(vol.publisher))
+    .sort((a, b) => score(b.title) - score(a.title) || (b.volumeCount ?? 0) - (a.volumeCount ?? 0))
+    .map((vol) => ({ ...vol, author: person.name }));
+  return { authors: [person.name], results };
 }

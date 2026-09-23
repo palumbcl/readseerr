@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
   // Check cache
   const cacheKey = `details:${type}:${id}`;
-  const cached = detailsCache.get(cacheKey) as MediaDetail | null;
+  const cached = (await detailsCache.get(cacheKey)) as MediaDetail | null;
   if (cached) {
     return NextResponse.json({ detail: cached, state: await getState(cached) });
   }
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Cache result
-    detailsCache.set(cacheKey, detail);
+    await detailsCache.set(cacheKey, detail);
 
     return NextResponse.json({ detail, state: await getState(detail) });
   } catch (error) {

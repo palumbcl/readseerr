@@ -80,3 +80,26 @@ export function parseJsonArray<T>(raw: string | null | undefined): T[] | null {
     return null;
   }
 }
+
+/**
+ * Clé de série pour regrouper les albums / recueils d'une même série :
+ * "The Walking Dead, Vol. 1", "The Walking Dead Book One", "Invincible - Ultimate Collection, Vol. 2" -> même clé.
+ */
+export function seriesKey(title: string): string {
+  return normalizeTitle(title)
+    .replace(/\s+(?:vol|volume|tome|book|livre|part|partie|compendium|collection|ultimate collection|omnibus|edition)\b.*$/, "")
+    .replace(/\s+\d{1,3}$/, "")
+    .trim();
+}
+
+/**
+ * Le nom d'une personne correspond-il à la recherche ? Chaque mot recherché doit commencer un mot du
+ * nom, ou l'inverse, pour tolérer les transcriptions ("Eiichiro Oda" / "Eiichirou Oda") et l'ordre
+ * nom / prénom ("Oda Eiichiro").
+ */
+export function personNameMatches(query: string, name: string): boolean {
+  const queryWords = normalizeTitle(query).split(" ").filter((w) => w.length >= 2);
+  const nameWords = normalizeTitle(name).split(" ").filter(Boolean);
+  if (queryWords.length === 0 || !queryWords.some((w) => w.length >= 3)) return false;
+  return queryWords.every((q) => nameWords.some((n) => n.startsWith(q) || (q.length >= 4 && q.startsWith(n) && n.length >= 3)));
+}
