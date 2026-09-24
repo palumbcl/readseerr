@@ -8,6 +8,7 @@ import AdminLibrary from "@/components/admin/AdminLibrary";
 import IssueList from "@/components/IssueList";
 import AdminSettings from "@/components/admin/AdminSettings";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { LockIcon } from "@/components/Icons";
 
 type Tab = "requests" | "issues" | "users" | "library" | "settings";
 
@@ -37,7 +38,7 @@ export default function AdminPage() {
       <div className="page-content">
         <div className="container">
           <div className="empty-state">
-            <div className="empty-state-icon">🔒</div>
+            <LockIcon className="empty-state-icon" size={56} />
             <div className="empty-state-title">Accès réservé</div>
             <p>Cette page est réservée aux administrateurs.</p>
           </div>

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import MediaDetails from "@/components/MediaDetails";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import type { DetailAvailability, MediaDetail } from "@/lib/types";
+import { ExclamationIcon } from "@/components/Icons";
 
 export default function DetailsPage() {
   const params = useParams();
@@ -51,7 +52,7 @@ export default function DetailsPage() {
       <div className="page-content">
         <div className="container">
           <div className="empty-state">
-            <div className="empty-state-icon">😕</div>
+            <ExclamationIcon className="empty-state-icon" size={56} />
             <div className="empty-state-title">Erreur</div>
             <p>{error || "Œuvre introuvable."}</p>
           </div>

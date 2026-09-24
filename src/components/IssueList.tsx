@@ -5,6 +5,7 @@ import Link from "next/link";
 import LoadingSpinner from "./LoadingSpinner";
 import { ISSUE_TYPE_LABELS, type IssueRecord, type IssueStatus } from "@/lib/types";
 import CoverImage from "@/components/CoverImage";
+import { BookOpenIcon, ChatIcon, CheckIcon } from "./Icons";
 
 interface IssueListProps {
   /** "all" : tous les signalements (admin) ; "mine" : ceux de l'utilisateur */
@@ -82,7 +83,7 @@ export default function IssueList({ scope, compact = false }: IssueListProps) {
           </p>
         ) : (
           <div className="empty-state">
-            <div className="empty-state-icon">✨</div>
+            <CheckIcon className="empty-state-icon" size={56} />
             <div className="empty-state-title">Aucun signalement</div>
           </div>
         )
@@ -93,7 +94,7 @@ export default function IssueList({ scope, compact = false }: IssueListProps) {
               {issue.media.coverUrl ? (
                 <CoverImage src={issue.media.coverUrl} alt="" className="issue-row-cover" width={44} height={66} />
               ) : (
-                <div className="issue-row-cover admin-request-no-cover">📚</div>
+                <div className="issue-row-cover admin-request-no-cover"><BookOpenIcon size={20} /></div>
               )}
               <div className="issue-row-info">
                 <div className="issue-row-title">
@@ -105,7 +106,7 @@ export default function IssueList({ scope, compact = false }: IssueListProps) {
                   {scope === "all" && <span>Par {issue.user.name}</span>}
                   <span>{formatDate(issue.createdAt)}</span>
                   {issue.commentCount > 0 && (
-                    <span>💬 {issue.commentCount}</span>
+                    <span className="meta-with-icon"><ChatIcon size={15} /> {issue.commentCount}</span>
                   )}
                 </div>
                 <p className="issue-row-message">{issue.message}</p>

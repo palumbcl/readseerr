@@ -5,6 +5,7 @@ import Link from "next/link";
 import LoadingSpinner from "./LoadingSpinner";
 import type { FollowedSeries as Followed } from "@/lib/types";
 import CoverImage from "@/components/CoverImage";
+import { BookOpenIcon } from "./Icons";
 
 /** Séries suivies par l'utilisateur, avec désabonnement et option de demande automatique. */
 export default function FollowedSeries() {
@@ -92,7 +93,7 @@ export default function FollowedSeries() {
             {follow.coverUrl ? (
               <CoverImage src={follow.coverUrl} alt="" width={56} height={84} />
             ) : (
-              <div className="admin-request-no-cover">📚</div>
+              <div className="admin-request-no-cover"><BookOpenIcon size={20} /></div>
             )}
             <div className="followed-item-info">
               <Link

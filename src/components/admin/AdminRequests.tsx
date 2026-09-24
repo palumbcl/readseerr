@@ -7,6 +7,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import { parseJsonArray } from "@/lib/titles";
 import type { AdminRequestRecord, RequestStatus } from "@/lib/types";
 import CoverImage from "@/components/CoverImage";
+import { BookOpenIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/Icons";
 
 type Filter = RequestStatus | "all";
 
@@ -19,9 +20,9 @@ const FILTERS: { value: Filter; label: string }[] = [
 ];
 
 const TYPE_LABELS: Record<string, string> = {
-  manga: "🇯🇵 Manga",
-  comic: "📘 Comic / BD",
-  bd: "🇫🇷 BD", // anciennes demandes (source BD retirée)
+  manga: "Manga",
+  comic: "Comic / BD",
+  bd: "BD", // anciennes demandes (source BD retirée)
 };
 
 type Action = "approve" | "decline" | "available" | "pending";
@@ -141,7 +142,7 @@ export default function AdminRequests() {
         </div>
       ) : requests.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-state-icon">✨</div>
+          <CheckIcon className="empty-state-icon" size={56} />
           <div className="empty-state-title">Rien à traiter</div>
           <p>Aucune demande dans cette catégorie.</p>
         </div>
@@ -152,7 +153,7 @@ export default function AdminRequests() {
               {req.coverUrl ? (
                 <CoverImage className="admin-request-cover" src={req.coverUrl} alt="" width={64} height={96} />
               ) : (
-                <div className="admin-request-cover admin-request-no-cover">📚</div>
+                <div className="admin-request-cover admin-request-no-cover"><BookOpenIcon size={22} /></div>
               )}
 
               <div className="admin-request-info">
@@ -179,7 +180,7 @@ export default function AdminRequests() {
                 <div className="admin-request-meta">
                   {req.library ? (
                     <span className="admin-request-library">
-                      📚 {req.library.booksCount} tome{req.library.booksCount > 1 ? "s" : ""} dans{" "}
+                      {req.library.booksCount} tome{req.library.booksCount > 1 ? "s" : ""} dans{" "}
                       {req.library.url ? (
                         <a href={req.library.url} target="_blank" rel="noopener noreferrer">{req.library.name}</a>
                       ) : (
@@ -191,11 +192,11 @@ export default function AdminRequests() {
                   )}
                   {req.otherRequests > 0 && (
                     <span className="admin-request-warning">
-                      ⚠️ {req.otherRequests} autre{req.otherRequests > 1 ? "s" : ""} demande{req.otherRequests > 1 ? "s" : ""} en cours
+                      {req.otherRequests} autre{req.otherRequests > 1 ? "s" : ""} demande{req.otherRequests > 1 ? "s" : ""} en cours
                     </span>
                   )}
                   {req.prowlarrUrl && (
-                    <a href={req.prowlarrUrl} target="_blank" rel="noopener noreferrer">🔎 Prowlarr</a>
+                    <a href={req.prowlarrUrl} target="_blank" rel="noopener noreferrer">Prowlarr</a>
                   )}
                   {req.sourceUrl && (
                     <a href={req.sourceUrl} target="_blank" rel="noopener noreferrer">Fiche source</a>
@@ -268,13 +269,13 @@ export default function AdminRequests() {
       {pageCount > 1 && (
         <div className="admin-pagination">
           <button className="btn btn-secondary btn-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            ← Précédent
+            <ChevronLeftIcon size={16} /> Précédent
           </button>
           <span>
             Page {page} / {pageCount}
           </span>
           <button className="btn btn-secondary btn-sm" disabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
-            Suivant →
+            Suivant <ChevronRightIcon size={16} />
           </button>
         </div>
       )}

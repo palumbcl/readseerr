@@ -1,16 +1,22 @@
 "use client";
 
 import type { LibraryRecentItem } from "@/lib/types";
+import { CheckIcon } from "@/components/Icons";
 
 /** Série récemment ajoutée dans Komga : ouvre directement la série dans Komga. */
 export default function LibraryCard({ item }: { item: LibraryRecentItem }) {
   const content = (
     <>
       <img className="media-card-image" src={item.thumbnailUrl} alt={item.name} loading="lazy" />
-      <span className="availability-badge available">Disponible</span>
+      <div className="media-card-top">
+        <span className="type-badge library">Komga</span>
+        <span className="availability-dot available" title="Disponible" aria-label="Disponible">
+          <CheckIcon size={14} strokeWidth={3} />
+        </span>
+      </div>
       <div className="media-card-overlay">
         <div className="media-card-title">{item.name}</div>
-        <div className="media-card-year">
+        <div className="media-card-count">
           {item.booksCount} tome{item.booksCount > 1 ? "s" : ""}
         </div>
       </div>

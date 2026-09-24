@@ -7,6 +7,7 @@ import MediaGrid from "@/components/MediaGrid";
 import LibraryCard from "@/components/LibraryCard";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import type { DiscoverRowPage, LibraryRecentItem, MediaResult } from "@/lib/types";
+import { ChevronLeftIcon } from "@/components/Icons";
 
 /** Page « Voir tout » d'une rangée de Découvrir, chargée page par page. */
 export default function DiscoverRowFullPage() {
@@ -72,8 +73,8 @@ export default function DiscoverRowFullPage() {
     <div className="page-content">
       <div className="container">
         <div className="page-header">
-          <Link href="/" className="details-back" style={{ marginBottom: 12, display: "inline-flex" }}>
-            ‹ Découvrir
+          <Link href="/" className="back-link">
+            <ChevronLeftIcon size={16} /> Découvrir
           </Link>
           <h1 className="page-title">{header?.title ?? "…"}</h1>
           {header && <p className="page-subtitle">{header.subtitle}</p>}

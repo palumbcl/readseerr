@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import LoadingSpinner from "./LoadingSpinner";
+import { StarIcon } from "./Icons";
 import type { MediaDetail, RequestPayload } from "@/lib/types";
 
 interface FollowButtonProps {
@@ -59,24 +60,27 @@ export default function FollowButton({ media, initialFollow }: FollowButtonProps
     }
   };
 
+  const unit = media.type === "comic" ? "numéros" : "tomes";
+
   return (
-    <div className="follow-box">
+    <>
       <button
         type="button"
-        className={`btn btn-secondary ${follow ? "following" : ""}`}
+        className={`btn btn-secondary btn-icon ${follow ? "following" : ""}`}
         onClick={() => (follow ? unfollow() : save(false))}
         disabled={busy}
-        title={follow ? "Ne plus suivre cette série" : undefined}
+        title={follow ? "Ne plus suivre cette série" : `Suivre la série (nouveaux ${unit})`}
+        aria-label={follow ? "Ne plus suivre cette série" : "Suivre la série"}
+        aria-pressed={!!follow}
       >
-        {busy ? <LoadingSpinner /> : follow ? "★" : "☆"} {follow ? "Série suivie" : "Suivre la série"}
+        {busy ? <LoadingSpinner /> : <StarIcon size={20} filled={!!follow} />}
       </button>
 
       {follow && (
-        <div className="follow-options">
-          <p className="request-note" style={{ marginTop: 0 }}>
-            Vous serez prévenu par email à l&apos;arrivée de nouveaux {media.type === "comic" ? "numéros" : "tomes"} dans
-            la bibliothèque.
-          </p>
+        <div className="action-note follow-options">
+          <span>
+            Série suivie : vous serez prévenu à l&apos;arrivée de nouveaux {unit} dans la bibliothèque.
+          </span>
           {media.type === "comic" && (
             <label className="follow-toggle">
               <input
@@ -90,7 +94,7 @@ export default function FollowButton({ media, initialFollow }: FollowButtonProps
           )}
         </div>
       )}
-      {error && <p className="form-error" style={{ marginTop: 8 }}>{error}</p>}
-    </div>
+      {error && <p className="action-note form-error">{error}</p>}
+    </>
   );
 }

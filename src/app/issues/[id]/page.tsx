@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { ISSUE_TYPE_LABELS, type IssueDetail } from "@/lib/types";
 import CoverImage from "@/components/CoverImage";
+import { ExclamationIcon } from "@/components/Icons";
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" });
@@ -76,7 +77,7 @@ export default function IssuePage() {
       <div className="page-content">
         <div className="container">
           <div className="empty-state">
-            <div className="empty-state-icon">😕</div>
+            <ExclamationIcon className="empty-state-icon" size={56} />
             <div className="empty-state-title">{loadError}</div>
           </div>
         </div>

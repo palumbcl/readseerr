@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import LoadingSpinner from "./LoadingSpinner";
+import { CheckIcon, ExclamationIcon } from "./Icons";
 import { ISSUE_TYPE_LABELS, type IssueType, type MediaDetail } from "@/lib/types";
 
 interface ReportIssueButtonProps {
@@ -59,12 +60,18 @@ export default function ReportIssueButton({ media, libraryVolumes }: ReportIssue
   };
 
   return (
-    <div className="report-issue">
-      <button type="button" className="btn-link" onClick={() => setOpen(true)}>
-        ⚠️ Signaler un problème
+    <>
+      <button
+        type="button"
+        className="btn btn-warning btn-icon"
+        onClick={() => setOpen(true)}
+        title="Signaler un problème"
+        aria-label="Signaler un problème"
+      >
+        <ExclamationIcon size={20} />
       </button>
       {createdId && (
-        <p className="request-note">
+        <p className="action-note">
           Merci ! Votre signalement a été transmis.{" "}
           <Link href={`/issues/${createdId}`}>Suivre la discussion</Link>
         </p>
@@ -88,7 +95,7 @@ export default function ReportIssueButton({ media, libraryVolumes }: ReportIssue
                       onChange={() => setType(t)}
                       className="visually-hidden"
                     />
-                    <div className="modal-volume-checkbox">{type === t && "✓"}</div>
+                    <div className="modal-volume-checkbox">{type === t && <CheckIcon size={14} strokeWidth={3} />}</div>
                     <span>{ISSUE_TYPE_LABELS[t]}</span>
                   </label>
                 ))}
@@ -149,6 +156,6 @@ export default function ReportIssueButton({ media, libraryVolumes }: ReportIssue
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

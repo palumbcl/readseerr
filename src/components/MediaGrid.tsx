@@ -2,6 +2,7 @@
 
 import type { MediaResult } from "@/lib/types";
 import MediaCard from "./MediaCard";
+import { SearchIcon } from "./Icons";
 
 interface MediaGridProps {
   results: MediaResult[];
@@ -22,7 +23,7 @@ export default function MediaGrid({ results, loading = false }: MediaGridProps) 
   if (results.length === 0) {
     return (
       <div className="empty-state">
-        <div className="empty-state-icon">🔍</div>
+        <SearchIcon className="empty-state-icon" size={56} />
         <div className="empty-state-title">Aucun résultat trouvé</div>
         <p>Essayez de modifier votre recherche ou de changer le type de média.</p>
       </div>

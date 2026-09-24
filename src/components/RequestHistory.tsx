@@ -7,6 +7,7 @@ import VolumeSelector from "./VolumeSelector";
 import { parseJsonArray } from "@/lib/titles";
 import type { DetailAvailability, MediaDetail, RequestRecord } from "@/lib/types";
 import CoverImage from "@/components/CoverImage";
+import { ChevronLeftIcon, ChevronRightIcon, InboxIcon } from "./Icons";
 
 /** Une demande déjà traitée par l'admin (acceptée, refusée, disponible) ne peut plus être modifiée. */
 const EDITABLE_STATUSES = new Set(["pending"]);
@@ -150,7 +151,7 @@ export default function RequestHistory() {
   if (!loading && allCount === 0) {
     return (
       <div className="empty-state">
-        <div className="empty-state-icon">📋</div>
+        <InboxIcon className="empty-state-icon" size={56} />
         <div className="empty-state-title">Aucune demande</div>
         <p>Vous n&apos;avez pas encore fait de demande. Recherchez un manga, comic ou BD pour commencer !</p>
       </div>
@@ -192,7 +193,7 @@ export default function RequestHistory() {
   const pagination = pageCount > 1 && (
     <div className="admin-pagination" style={{ paddingTop: 16 }}>
       <button className="btn btn-secondary btn-sm" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>
-        ← Précédent
+        <ChevronLeftIcon size={16} /> Précédent
       </button>
       <span>
         Page {page} / {pageCount} · {total} demande{total > 1 ? "s" : ""}
@@ -202,7 +203,7 @@ export default function RequestHistory() {
         disabled={page >= pageCount || loading}
         onClick={() => setPage((p) => p + 1)}
       >
-        Suivant →
+        Suivant <ChevronRightIcon size={16} />
       </button>
     </div>
   );
@@ -233,9 +234,9 @@ export default function RequestHistory() {
   const hasEditableRequest = requests.some((req) => EDITABLE_STATUSES.has(req.status));
 
   const typeLabels: Record<string, string> = {
-    manga: "🇯🇵 Manga",
-    comic: "📘 Comic / BD",
-    bd: "🇫🇷 BD", // anciennes demandes (source BD retirée)
+    manga: "Manga",
+    comic: "Comic / BD",
+    bd: "BD", // anciennes demandes (source BD retirée)
   };
 
   return (

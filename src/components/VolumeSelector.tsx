@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { VolumeInfo } from "@/lib/types";
+import { CheckIcon } from "./Icons";
 
 interface VolumeSelectorProps {
   volumes: VolumeInfo[];
@@ -80,7 +81,7 @@ export default function VolumeSelector({
           onClick={toggleAll}
           style={{ marginBottom: 12 }}
         >
-          <div className="modal-volume-checkbox">{allSelected && "✓"}</div>
+          <div className="modal-volume-checkbox">{allSelected && <CheckIcon size={14} strokeWidth={3} />}</div>
           <span style={{ fontWeight: 600 }}>
             {owned.size > 0 ? `Tous les tomes manquants (${selectable.length})` : `Tous les tomes (${volumes.length})`}
           </span>
@@ -97,7 +98,7 @@ export default function VolumeSelector({
                 aria-disabled={isOwned}
               >
                 <div className="modal-volume-checkbox">
-                  {selected.has(vol.number) && "✓"}
+                  {selected.has(vol.number) && <CheckIcon size={14} strokeWidth={3} />}
                 </div>
                 <span>
                   Tome {vol.number}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import SearchBar from "@/components/SearchBar";
 import MediaCard from "@/components/MediaCard";
 import LibraryCard from "@/components/LibraryCard";
 import DiscoverRow from "@/components/DiscoverRow";
@@ -39,15 +38,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main>
-      <section className="hero hero-compact">
-        <h1 className="hero-title">ReadSeerr</h1>
-        <p className="hero-subtitle">Recherchez et demandez vos mangas, comics et BD.</p>
-        <div className="hero-search">
-          <SearchBar />
-        </div>
-      </section>
-
+    <main className="page-content">
       <div className="container discover">
         {!discover && !error && (
           <>
@@ -64,8 +55,8 @@ export default function HomePage() {
 
         {discover?.library && discover.library.length > 0 && (
           <DiscoverRow
-            title="Ajouts récents dans la bibliothèque"
-            subtitle="Nouvelles séries et nouveaux tomes dans Komga"
+            title="Ajouts récents"
+            subtitle="Nouvelles séries et nouveaux tomes dans la bibliothèque"
             href={discover.libraryHasMore ? "/discover/library" : undefined}
           >
             {discover.library.map((item) => (

@@ -2,17 +2,16 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense, useCallback, useRef, useMemo } from "react";
-import SearchBar from "@/components/SearchBar";
 import MediaGrid from "@/components/MediaGrid";
 import { normalizeTitle, seriesKey } from "@/lib/titles";
 import type { MediaResult, MediaType, SearchPage } from "@/lib/types";
 
 const MEDIA_TYPES = ["manga", "comic"] as const;
 
-const FILTER_OPTIONS: { value: MediaType | "all"; label: string; emoji: string }[] = [
-  { value: "all", label: "Tous", emoji: "📚" },
-  { value: "manga", label: "Manga", emoji: "🇯🇵" },
-  { value: "comic", label: "Comics & BD", emoji: "📘" },
+const FILTER_OPTIONS: { value: MediaType | "all"; label: string }[] = [
+  { value: "all", label: "Tous" },
+  { value: "manga", label: "Manga" },
+  { value: "comic", label: "Comics & BD" },
 ];
 
 const TYPE_LABELS: Record<MediaType, string> = {
@@ -397,10 +396,6 @@ function SearchContent() {
   return (
     <div className="page-content">
       <div className="container">
-        <div style={{ paddingTop: 24, paddingBottom: 8 }}>
-          <SearchBar defaultQuery={query} compact />
-        </div>
-
         {query && (
           <div className="page-header">
             <h1 className="page-title">
@@ -426,7 +421,7 @@ function SearchContent() {
 
         {matchedAuthors.length > 0 && (
           <div className="search-notice search-notice-author">
-            ✍️ Œuvres de <strong>{matchedAuthors.join(", ")}</strong> affichées en premier.
+            Œuvres de <strong>{matchedAuthors.join(", ")}</strong> affichées en premier.
           </div>
         )}
 
@@ -461,7 +456,7 @@ function SearchContent() {
                 onClick={() => handleFilterToggle(f.value)}
                 type="button"
               >
-                {f.emoji} {f.label}
+                {f.label}
                 {f.value !== "all" && (
                   <span className="filter-chip-count">
                     {results.filter((r) => r.type === f.value).length}
