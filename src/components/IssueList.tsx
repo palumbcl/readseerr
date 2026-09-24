@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import LoadingSpinner from "./LoadingSpinner";
 import { ISSUE_TYPE_LABELS, type IssueRecord, type IssueStatus } from "@/lib/types";
+import CoverImage from "@/components/CoverImage";
 
 interface IssueListProps {
   /** "all" : tous les signalements (admin) ; "mine" : ceux de l'utilisateur */
@@ -90,7 +91,7 @@ export default function IssueList({ scope, compact = false }: IssueListProps) {
           {issues.map((issue) => (
             <Link key={issue.id} href={`/issues/${issue.id}`} className="issue-row">
               {issue.media.coverUrl ? (
-                <img src={issue.media.coverUrl} alt="" className="issue-row-cover" />
+                <CoverImage src={issue.media.coverUrl} alt="" className="issue-row-cover" width={44} height={66} />
               ) : (
                 <div className="issue-row-cover admin-request-no-cover">📚</div>
               )}

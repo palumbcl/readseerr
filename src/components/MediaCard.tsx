@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import AvailabilityBadge from "./AvailabilityBadge";
 import type { MediaResult } from "@/lib/types";
+import CoverImage from "@/components/CoverImage";
 
 interface MediaCardProps {
   media: MediaResult;
@@ -24,11 +25,12 @@ export default function MediaCard({ media }: MediaCardProps) {
   return (
     <div className="media-card" onClick={handleClick} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && handleClick()}>
       {media.coverUrl ? (
-        <img
+        <CoverImage
           className="media-card-image"
           src={media.coverUrl}
           alt={media.title}
-          loading="lazy"
+          fill
+          sizes="(max-width: 600px) 45vw, 200px"
         />
       ) : (
         <div className="media-card-no-image">📚</div>

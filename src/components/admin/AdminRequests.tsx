@@ -6,6 +6,7 @@ import StatusBadge from "@/components/StatusBadge";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { parseJsonArray } from "@/lib/titles";
 import type { AdminRequestRecord, RequestStatus } from "@/lib/types";
+import CoverImage from "@/components/CoverImage";
 
 type Filter = RequestStatus | "all";
 
@@ -149,7 +150,7 @@ export default function AdminRequests() {
           {requests.map((req) => (
             <div key={req.id} className="admin-request-card">
               {req.coverUrl ? (
-                <img className="admin-request-cover" src={req.coverUrl} alt="" />
+                <CoverImage className="admin-request-cover" src={req.coverUrl} alt="" width={64} height={96} />
               ) : (
                 <div className="admin-request-cover admin-request-no-cover">📚</div>
               )}

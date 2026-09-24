@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { ISSUE_TYPE_LABELS, type IssueDetail } from "@/lib/types";
+import CoverImage from "@/components/CoverImage";
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" });
@@ -97,7 +98,9 @@ export default function IssuePage() {
     <div className="page-content">
       <div className="container issue-page">
         <div className="issue-header">
-          {issue.media.coverUrl && <img src={issue.media.coverUrl} alt="" className="issue-header-cover" />}
+          {issue.media.coverUrl && (
+            <CoverImage src={issue.media.coverUrl} alt="" className="issue-header-cover" width={90} height={135} />
+          )}
           <div>
             <p className="page-subtitle" style={{ marginTop: 0 }}>Signalement</p>
             <h1 className="page-title">{issue.media.title}</h1>

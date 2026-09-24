@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { MediaResult } from "@/lib/types";
+import CoverImage from "@/components/CoverImage";
 
 interface SearchBarProps {
   defaultQuery?: string;
@@ -209,7 +210,7 @@ export default function SearchBar({ defaultQuery = "", compact = false }: Search
               >
                 <div className="autocomplete-item-cover">
                   {item.coverUrl ? (
-                    <img src={item.coverUrl} alt="" />
+                    <CoverImage src={item.coverUrl} alt="" width={36} height={50} />
                   ) : (
                     <span className="autocomplete-item-no-cover">📚</span>
                   )}

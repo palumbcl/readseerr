@@ -803,6 +803,7 @@ input {
 }
 
 .details-cover {
+  position: relative; /* couverture en mode fill */
   flex-shrink: 0;
   width: 250px;
   border-radius: var(--radius-lg);

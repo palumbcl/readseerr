@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import LoadingSpinner from "./LoadingSpinner";
 import type { FollowedSeries as Followed } from "@/lib/types";
+import CoverImage from "@/components/CoverImage";
 
 /** Séries suivies par l'utilisateur, avec désabonnement et option de demande automatique. */
 export default function FollowedSeries() {
@@ -89,7 +90,7 @@ export default function FollowedSeries() {
         {follows.map((follow) => (
           <div key={keyOf(follow)} className="followed-item">
             {follow.coverUrl ? (
-              <img src={follow.coverUrl} alt="" />
+              <CoverImage src={follow.coverUrl} alt="" width={56} height={84} />
             ) : (
               <div className="admin-request-no-cover">📚</div>
             )}

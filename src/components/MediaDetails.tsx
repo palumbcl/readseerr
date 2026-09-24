@@ -6,6 +6,7 @@ import AvailabilityBadge from "./AvailabilityBadge";
 import RequestButton from "./RequestButton";
 import FollowButton from "./FollowButton";
 import ReportIssueButton from "./ReportIssueButton";
+import CoverImage from "@/components/CoverImage";
 
 interface MediaDetailsProps {
   detail: MediaDetail;
@@ -56,7 +57,7 @@ export default function MediaDetails({ detail, state }: MediaDetailsProps) {
         {/* Cover */}
         <div className="details-cover">
           {detail.coverUrl ? (
-            <img src={detail.coverUrl} alt={detail.title} />
+            <CoverImage src={detail.coverUrl} alt={detail.title} fill sizes="250px" priority />
           ) : (
             <div className="media-card-no-image" style={{ fontSize: "4rem" }}>📚</div>
           )}

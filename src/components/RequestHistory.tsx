@@ -6,6 +6,7 @@ import LoadingSpinner from "./LoadingSpinner";
 import VolumeSelector from "./VolumeSelector";
 import { parseJsonArray } from "@/lib/titles";
 import type { DetailAvailability, MediaDetail, RequestRecord } from "@/lib/types";
+import CoverImage from "@/components/CoverImage";
 
 /** Une demande déjà traitée par l'admin (acceptée, refusée, disponible) ne peut plus être modifiée. */
 const EDITABLE_STATUSES = new Set(["pending"]);
@@ -155,11 +156,7 @@ export default function RequestHistory() {
               <td>
                 <div className="request-title-cell">
                   {req.coverUrl && (
-                    <img
-                      className="request-cover-thumb"
-                      src={req.coverUrl}
-                      alt=""
-                    />
+                    <CoverImage className="request-cover-thumb" src={req.coverUrl} alt="" width={40} height={56} />
                   )}
                   <span>{req.title}</span>
                 </div>
