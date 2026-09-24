@@ -2395,3 +2395,13 @@ a.navbar-avatar:hover {
   flex: 1;
   min-width: 0;
 }
+
+.auth-footer a {
+  color: var(--accent-primary-hover);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
+}

@@ -14,6 +14,7 @@ export const CONFIG_FIELDS = {
   komgaWebhookSecret: { env: "KOMGA_WEBHOOK_SECRET", secret: true },
   komgaSyncIntervalMinutes: { env: "KOMGA_SYNC_INTERVAL_MINUTES", secret: false },
   komgaLoginEnabled: { env: "KOMGA_LOGIN_ENABLED", secret: false }, // "true" : connexion avec un compte Komga
+  registrationEnabled: { env: "REGISTRATION_ENABLED", secret: false }, // "false" : inscriptions fermées
   discordWebhookUrl: { env: "DISCORD_WEBHOOK_URL", secret: true },
   prowlarrUrl: { env: "PROWLARR_URL", secret: false },
   ntfyUrl: { env: "NTFY_URL", secret: false }, // https://ntfy.sh par défaut
@@ -97,4 +98,9 @@ export function describeConfig(): Record<ConfigKey, { value: string; source: Con
     };
   }
   return result;
+}
+
+/** Inscriptions ouvertes, sauf si l'admin les a fermées (Paramètres ou REGISTRATION_ENABLED=false). */
+export function isRegistrationEnabled(): boolean {
+  return getConfig("registrationEnabled") !== "false";
 }

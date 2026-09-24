@@ -1,6 +1,7 @@
 import AuthForm from "@/components/AuthForm";
 import { isSsoEnabled } from "@/lib/auth";
 import { isKomgaLoginEnabled } from "@/lib/komga";
+import { isRegistrationEnabled } from "@/lib/config";
 
 interface LoginPageProps {
   searchParams: Promise<{ callbackUrl?: string; error?: string }>;
@@ -23,6 +24,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <AuthForm
         ssoEnabled={isSsoEnabled}
         komgaLoginEnabled={isKomgaLoginEnabled()}
+        registrationEnabled={isRegistrationEnabled()}
         callbackUrl={safeCallbackUrl}
         initialError={error}
       />

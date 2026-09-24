@@ -6,8 +6,8 @@ export default auth((req) => {
 
   // Routes publiques
   // Seule la page de connexion est accessible sans session
-  const publicRoutes = ["/login"];
-  const publicApiRoutes = ["/api/auth", "/api/webhooks"];
+  const publicRoutes = ["/login", "/register"];
+  const publicApiRoutes = ["/api/auth", "/api/webhooks", "/api/register"];
   
   const isPublicRoute = 
     publicRoutes.includes(pathname) || 

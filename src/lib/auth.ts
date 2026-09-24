@@ -7,6 +7,28 @@ import { compare } from "bcrypt-ts";
 import { resolveRole } from "@/lib/roles";
 import { authenticateKomgaUser, isKomgaLoginEnabled } from "@/lib/komga";
 
+/**
+ * Recopie l'email et le nom Authelia sur un compte créé avec l'email de secours « <sub>@authelia.local ».
+ * Ignoré si l'email réel appartient déjà à un autre compte ReadSeerr (pas de fusion implicite).
+ */
+async function syncAutheliaProfile(userId: string, profile: Record<string, unknown>) {
+  const email = typeof profile.email === "string" ? profile.email.trim().toLowerCase() : "";
+  const current = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
+  if (!current || !email || !current.email.endsWith("@authelia.local")) return null;
+  if (await prisma.user.findUnique({ where: { email } })) {
+    console.warn(`Compte Authelia ${current.email} : l'email ${email} est déjà utilisé par un autre compte.`);
+    return null;
+  }
+
+  const name =
+    (typeof profile.name === "string" && profile.name) ||
+    (typeof profile.preferred_username === "string" && profile.preferred_username) ||
+    email.split("@")[0];
+  const updated = await prisma.user.update({ where: { id: userId }, data: { email, name }, select: { name: true } });
+  console.log(`Compte Authelia mis à jour : ${current.email} -> ${email}`);
+  return updated;
+}
+
 /** Un compte ReadSeerr existe déjà avec cet email, sans lien avec Komga. */
 class KomgaAccountConflict extends CredentialsSignin {
   code = "komga_conflict";
@@ -102,6 +124,9 @@ if (isSsoEnabled) {
       },
     },
     checks: ["pkce", "state"],
+    // Authelia 4.39+ ne met plus email / nom / groupes dans le jeton d'identité : ils ne sont
+    // fournis que par l'adresse userinfo. Sans cela, le compte est créé avec « <sub>@authelia.local ».
+    idToken: false,
     profile(profile) {
       const name =
         profile.preferred_username ||
@@ -134,13 +159,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   providers,
   callbacks: {
-    async jwt({ token, user, profile }) {
+    async jwt({ token, user, profile, account }) {
       if (profile) {
         token.groups = (profile as Record<string, unknown>).groups ?? [];
       }
       if (user?.id) {
         token.id = user.id;
         token.name = user.name;
+
+        // Compte Authelia créé sans email réel (ancienne version) : on récupère l'email et le nom
+        if (account?.provider === "authelia" && profile) {
+          const synced = await syncAutheliaProfile(user.id, profile as Record<string, unknown>);
+          if (synced) token.name = synced.name;
+        }
 
         // Connexion : rôle effectif (ADMIN_EMAILS / groupe Authelia / base), recopié en base.
         // Le rôle du jeton ne sert qu'à l'affichage : les API recalculent toujours le rôle.

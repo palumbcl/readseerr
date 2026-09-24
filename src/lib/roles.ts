@@ -8,6 +8,11 @@ function getAdminEmails(): string[] {
     .filter(Boolean);
 }
 
+/** Email réservé à un administrateur (ADMIN_EMAILS) : ne peut pas être pris par une inscription. */
+export function isAdminEmail(email: string): boolean {
+  return getAdminEmails().includes(email.trim().toLowerCase());
+}
+
 /** Quand ADMIN_EMAILS est défini, il fait foi : les rôles ne se gèrent plus depuis l'interface. */
 export function areRolesManagedByEnv(): boolean {
   return getAdminEmails().length > 0;

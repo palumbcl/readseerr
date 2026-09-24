@@ -395,3 +395,23 @@ export async function sendDiscordIssueNotification({
     ],
   });
 }
+
+/** Prévient l'admin qu'un lecteur vient de créer son compte. */
+export async function sendDiscordNewUserNotification({ name, email }: { name: string; email: string }) {
+  const appUrl = getAppUrl();
+  await postToDiscord({
+    embeds: [
+      {
+        title: `Nouveau compte : ${name}`.slice(0, 256),
+        description: "Un lecteur vient de s'inscrire sur ReadSeerr.",
+        color: 0x6366f1,
+        fields: [
+          { name: "Nom", value: truncate(name), inline: true },
+          { name: "Email", value: truncate(email), inline: true },
+          ...(appUrl ? [{ name: "Liens", value: `[Gérer les comptes](${appUrl}/admin)`, inline: false }] : []),
+        ],
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  });
+}

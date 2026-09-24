@@ -18,6 +18,8 @@ interface FieldDef {
   placeholder?: string;
   help?: string;
   type?: "text" | "number" | "toggle";
+  /** Interrupteur : valeur appliquée quand rien n'est défini */
+  defaultValue?: "true" | "false";
 }
 
 interface SectionDef {
@@ -29,6 +31,20 @@ interface SectionDef {
 }
 
 const SECTIONS: SectionDef[] = [
+  {
+    id: "accounts",
+    title: "Comptes",
+    description: "Création de compte depuis la page de connexion. Les nouveaux comptes sont des lecteurs, soumis au quota.",
+    fields: [
+      {
+        key: "registrationEnabled",
+        label: "Inscriptions ouvertes",
+        type: "toggle",
+        defaultValue: "true",
+        help: "Désactivé : seuls les comptes existants, Authelia et Komga (si activé) peuvent se connecter.",
+      },
+    ],
+  },
   {
     id: "komga",
     title: "Komga",
@@ -216,7 +232,7 @@ function SettingsSection({
                 <select
                   id={`cfg-${field.key}`}
                   className="form-input"
-                  value={inputValue === "true" ? "true" : "false"}
+                  value={(inputValue || field.defaultValue) === "true" ? "true" : "false"}
                   onChange={(e) => setDraft((prev) => ({ ...prev, [field.key]: e.target.value }))}
                 >
                   <option value="false">Désactivée</option>

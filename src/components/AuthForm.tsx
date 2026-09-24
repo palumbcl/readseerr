@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,6 +10,8 @@ interface AuthFormProps {
   ssoEnabled: boolean;
   /** Identifiants Komga acceptés dans le formulaire */
   komgaLoginEnabled: boolean;
+  /** Lien « Créer un compte » */
+  registrationEnabled: boolean;
   callbackUrl: string;
   initialError?: string;
 }
@@ -30,7 +33,13 @@ function errorMessage(code?: string) {
   return ERROR_MESSAGES[code] ?? "La connexion a échoué. Réessayez.";
 }
 
-export default function AuthForm({ ssoEnabled, komgaLoginEnabled, callbackUrl, initialError }: AuthFormProps) {
+export default function AuthForm({
+  ssoEnabled,
+  komgaLoginEnabled,
+  registrationEnabled,
+  callbackUrl,
+  initialError,
+}: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(errorMessage(initialError));
@@ -142,6 +151,12 @@ export default function AuthForm({ ssoEnabled, komgaLoginEnabled, callbackUrl, i
           )}
         </button>
       </form>
+
+      {registrationEnabled && (
+        <p className="auth-footer" style={{ marginTop: 16 }}>
+          Pas encore de compte ? <Link href="/register">Créer un compte</Link>
+        </p>
+      )}
 
       <div className="auth-divider">
         <span>ou</span>
