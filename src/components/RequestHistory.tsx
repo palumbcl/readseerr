@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import StatusBadge from "./StatusBadge";
 import LoadingSpinner from "./LoadingSpinner";
 import VolumeSelector from "./VolumeSelector";
@@ -10,6 +10,16 @@ import CoverImage from "@/components/CoverImage";
 
 /** Une demande déjà traitée par l'admin (acceptée, refusée, disponible) ne peut plus être modifiée. */
 const EDITABLE_STATUSES = new Set(["pending"]);
+
+type StatusFilter = "all" | "pending" | "approved" | "available" | "declined";
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "Toutes" },
+  { value: "pending", label: "En attente" },
+  { value: "approved", label: "Acceptées" },
+  { value: "available", label: "Disponibles" },
+  { value: "declined", label: "Refusées" },
+];
 
 export default function RequestHistory() {
   const [requests, setRequests] = useState<RequestRecord[]>([]);
@@ -22,24 +32,47 @@ export default function RequestHistory() {
     ownedVolumes: number[] | null;
   } | null>(null);
   const [actionError, setActionError] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
 
+  // Recherche appliquée après une courte pause de frappe
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    const timer = setTimeout(() => {
+      setQuery(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
+    setLoading(true);
     try {
-      const response = await fetch("/api/request");
+      const params = new URLSearchParams({ page: String(page) });
+      if (status !== "all") params.set("status", status);
+      if (query) params.set("q", query);
+      const response = await fetch(`/api/request?${params}`);
       if (response.ok) {
         const data = await response.json();
         setRequests(data.requests || []);
+        setTotal(data.total ?? 0);
+        setPageSize(data.pageSize ?? 25);
+        setCounts(data.counts ?? null);
       }
     } catch {
       console.error("Failed to fetch requests");
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, status, query]);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
 
   const removeRequest = async (id: string) => {
     setBusyId(id);
@@ -49,7 +82,8 @@ export default function RequestHistory() {
       const response = await fetch(`/api/request/${id}`, { method: "DELETE" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      setRequests((prev) => prev.filter((req) => req.id !== id));
+      // Recharge la page : une demande de la page suivante remonte, les compteurs bougent
+      await fetchRequests();
     } catch (error) {
       setActionError(error instanceof Error && error.message ? error.message : "Impossible de retirer la demande.");
     } finally {
@@ -108,21 +142,90 @@ export default function RequestHistory() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="loading-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
+  const allCount = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : null;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const filtering = status !== "all" || query !== "";
 
-  if (requests.length === 0) {
+  // Aucune demande du tout : message d'accueil plutôt que filtres vides
+  if (!loading && allCount === 0) {
     return (
       <div className="empty-state">
         <div className="empty-state-icon">📋</div>
         <div className="empty-state-title">Aucune demande</div>
         <p>Vous n&apos;avez pas encore fait de demande. Recherchez un manga, comic ou BD pour commencer !</p>
       </div>
+    );
+  }
+
+  const toolbar = (
+    <div className="history-toolbar">
+      <div className="filter-chips" style={{ padding: 0 }}>
+        {STATUS_FILTERS.map((f) => {
+          const count = f.value === "all" ? allCount : counts?.[f.value];
+          return (
+            <button
+              key={f.value}
+              type="button"
+              className={`filter-chip ${status === f.value ? "active" : ""}`}
+              onClick={() => {
+                setStatus(f.value);
+                setPage(1);
+              }}
+            >
+              {f.label}
+              {count !== null && count !== undefined && <span className="filter-chip-count">{count}</span>}
+            </button>
+          );
+        })}
+      </div>
+      <input
+        type="search"
+        className="form-input history-search"
+        placeholder="Rechercher un titre…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        aria-label="Rechercher dans l'historique"
+      />
+    </div>
+  );
+
+  const pagination = pageCount > 1 && (
+    <div className="admin-pagination" style={{ paddingTop: 16 }}>
+      <button className="btn btn-secondary btn-sm" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>
+        ← Précédent
+      </button>
+      <span>
+        Page {page} / {pageCount} · {total} demande{total > 1 ? "s" : ""}
+      </span>
+      <button
+        className="btn btn-secondary btn-sm"
+        disabled={page >= pageCount || loading}
+        onClick={() => setPage((p) => p + 1)}
+      >
+        Suivant →
+      </button>
+    </div>
+  );
+
+  if (loading && requests.length === 0) {
+    return (
+      <>
+        {counts && toolbar}
+        <div className="loading-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </>
+    );
+  }
+
+  if (requests.length === 0) {
+    return (
+      <>
+        {toolbar}
+        <p className="request-note" style={{ textAlign: "center", padding: "32px 0" }}>
+          {filtering ? "Aucune demande ne correspond à ces filtres." : "Aucune demande."}
+        </p>
+      </>
     );
   }
 
@@ -137,8 +240,9 @@ export default function RequestHistory() {
 
   return (
     <>
+    {toolbar}
     {actionError && <p className="form-error" style={{ marginBottom: 12 }}>{actionError}</p>}
-    <div className="requests-table-wrapper">
+    <div className="requests-table-wrapper" style={{ opacity: loading ? 0.6 : 1 }}>
       <table className="requests-table">
         <thead>
           <tr>
@@ -229,6 +333,7 @@ export default function RequestHistory() {
         </tbody>
       </table>
     </div>
+    {pagination}
 
     {editing && (
       <VolumeSelector

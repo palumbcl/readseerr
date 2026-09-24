@@ -2340,3 +2340,25 @@ input {
 .search-notice-author strong {
   color: var(--text-primary);
 }
+
+/* ---------- Historique des demandes ---------- */
+.history-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.history-search {
+  width: 240px;
+  max-width: 100%;
+  padding: 8px 12px;
+}
+
+@media (max-width: 600px) {
+  .history-search {
+    width: 100%;
+  }
+}

@@ -126,21 +126,44 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET: Fetch request history for the current user
-export async function GET() {
+const HISTORY_PAGE_SIZE = 25;
+const HISTORY_STATUSES = ["pending", "approved", "declined", "available"];
+
+// GET : historique paginé de l'utilisateur (?page=N, ?status=…, ?q=titre)
+export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   }
 
-  try {
-    const requests = await prisma.request.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    });
+  const params = request.nextUrl.searchParams;
+  const page = Math.max(1, parseInt(params.get("page") || "1", 10) || 1);
+  const status = params.get("status");
+  const q = params.get("q")?.trim();
 
-    return NextResponse.json({ requests });
+  const where = {
+    userId: user.id,
+    ...(status && HISTORY_STATUSES.includes(status) && { status }),
+    // SQLite : `contains` est insensible à la casse pour les lettres ASCII
+    ...(q && { title: { contains: q } }),
+  };
+
+  try {
+    const [requests, total, grouped] = await Promise.all([
+      prisma.request.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * HISTORY_PAGE_SIZE,
+        take: HISTORY_PAGE_SIZE,
+      }),
+      prisma.request.count({ where }),
+      prisma.request.groupBy({ by: ["status"], where: { userId: user.id }, _count: true }),
+    ]);
+
+    const counts = Object.fromEntries(HISTORY_STATUSES.map((s) => [s, 0]));
+    for (const g of grouped) counts[g.status] = g._count;
+
+    return NextResponse.json({ requests, total, counts, page, pageSize: HISTORY_PAGE_SIZE });
   } catch (error) {
     console.error("Request history error:", error);
     return NextResponse.json(
