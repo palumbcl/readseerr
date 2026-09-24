@@ -1,19 +1,30 @@
 import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
 import Navbar from "@/components/Navbar";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import "./globals.css";
 
 export const viewport: Viewport = {
-  themeColor: "#09090b",
+  themeColor: "#0a0e17",
+  // Contenu sous l'encoche / la barre d'état des téléphones, en mode application
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
   title: "ReadSeerr",
   description: "Interface unifiée pour demander des mangas, comics et BD, synchronisée avec Komga.",
-  manifest: "/manifest.json",
+  // Le manifeste (src/app/manifest.ts) est ajouté automatiquement par Next.js
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    // iOS ignore le manifeste : l'icône de l'écran d'accueil vient d'ici
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "ReadSeerr",
   },
   openGraph: {
@@ -43,6 +54,7 @@ export default function RootLayout({
           <Navbar />
           {children}
         </SessionProvider>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

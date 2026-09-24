@@ -18,6 +18,11 @@ export default auth((req) => {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/logo") ||
+    // PWA : manifeste, icônes et service worker sont demandés sans cookie de session
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/sw.js" ||
+    pathname === "/offline.html" ||
+    pathname.startsWith("/icons/") ||
     pathname.endsWith(".svg") ||
     pathname.endsWith(".ico");
 

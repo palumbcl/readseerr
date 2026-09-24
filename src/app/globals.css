@@ -139,6 +139,8 @@ input {
   right: 0;
   z-index: 100;
   padding: 12px 0;
+  /* Application installée : la barre passe sous l'encoche / la barre d'état */
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
   background: rgba(10, 14, 23, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -1426,7 +1428,7 @@ input {
 
 /* ---------- Page Layout ---------- */
 .page-content {
-  padding-top: 80px;
+  padding-top: calc(80px + env(safe-area-inset-top, 0px));
   min-height: 100vh;
 }
 
