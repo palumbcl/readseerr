@@ -21,7 +21,7 @@ const MAX_MESSAGE = 2000;
 
 const issueInclude = {
   media: true,
-  user: { select: { id: true, name: true, email: true } },
+  user: { select: { id: true, name: true, email: true, ntfyTopic: true } },
   resolvedBy: { select: { name: true } },
   _count: { select: { comments: true } },
 } satisfies Prisma.IssueInclude;

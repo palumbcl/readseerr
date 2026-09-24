@@ -16,6 +16,7 @@ model User {
   passwordHash String?
   role         String    @default("user") // "user" | "admin"
   quotaLimit   Int?      // tomes par période : null = quota par défaut, -1 = illimité
+  ntfyTopic    String?   // sujet ntfy personnel : notifications push du lecteur
   createdAt    DateTime  @default(now())
   requests     Request[]
   handledRequests Request[] @relation("HandledRequests")

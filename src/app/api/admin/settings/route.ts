@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/permissions";
 import { CONFIG_FIELDS, describeConfig, saveConfig, type ConfigKey } from "@/lib/config";
 import { getQuotaSettings, setQuotaSettings } from "@/lib/settings";
 
-const URL_KEYS: ConfigKey[] = ["komgaUrl", "komgaPublicUrl", "prowlarrUrl", "discordWebhookUrl"];
+const URL_KEYS: ConfigKey[] = ["komgaUrl", "komgaPublicUrl", "prowlarrUrl", "discordWebhookUrl", "ntfyUrl", "gotifyUrl"];
 
 // GET : réglages modifiables depuis l'interface (secrets jamais renvoyés)
 export async function GET() {
@@ -54,6 +54,10 @@ export async function PUT(request: NextRequest) {
     const interval = patch.komgaSyncIntervalMinutes?.trim();
     if (interval && !(Number.isInteger(Number(interval)) && Number(interval) >= 5 && Number(interval) <= 1440)) {
       return NextResponse.json({ error: "Intervalle de synchronisation invalide (5 à 1440 minutes)." }, { status: 400 });
+    }
+    const topic = patch.ntfyAdminTopic?.trim();
+    if (topic && !/^[A-Za-z0-9_-]{1,64}$/.test(topic)) {
+      return NextResponse.json({ error: "Sujet ntfy invalide : lettres, chiffres, « - » et « _ » uniquement." }, { status: 400 });
     }
     const port = patch.smtpPort?.trim();
     if (port && !(Number.isInteger(Number(port)) && Number(port) > 0 && Number(port) < 65536)) {

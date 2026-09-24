@@ -1,6 +1,7 @@
 import type { MediaType } from "@/lib/types";
 import type { KomgaSeriesMatch } from "@/lib/komga";
 import { getConfig } from "@/lib/config";
+import { pushAdmin, stripMarkdownLinks } from "@/lib/push";
 
 const TYPE_STYLES: Record<MediaType, { label: string; color: number }> = {
   manga: { label: "🇯🇵 Manga", color: 0xe11d48 },
@@ -92,7 +93,35 @@ function formatDate(date: Date): string {
   return date.toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" });
 }
 
-async function postToDiscord(payload: unknown) {
+interface DiscordEmbed {
+  title?: string;
+  description?: string;
+  url?: string;
+  fields?: EmbedField[];
+  // Autres propriétés Discord (couleur, image, pied de page…), transmises telles quelles
+  [key: string]: unknown;
+}
+
+/** Même alerte en notification push (ntfy / Gotify) : titre, description et champs en texte. */
+async function pushEmbed(embed: DiscordEmbed | undefined) {
+  if (!embed?.title) return;
+  const lines = [
+    embed.description,
+    ...(embed.fields ?? []).filter((f) => f.name !== "Liens").map((f) => `${f.name} : ${f.value}`),
+  ].filter(Boolean) as string[];
+  const appUrl = getAppUrl();
+  await pushAdmin({
+    title: embed.title,
+    message: stripMarkdownLinks(lines.join("\n")),
+    click: appUrl ? `${appUrl}/admin` : embed.url,
+    tags: ["books"],
+  });
+}
+
+/** Alerte de l'administrateur : Discord et, si configurés, ntfy / Gotify. */
+async function postToDiscord(payload: { embeds?: DiscordEmbed[] }) {
+  await pushEmbed(payload.embeds?.[0]).catch((error) => console.error("Notification push échouée:", error));
+
   const webhookUrl = getConfig("discordWebhookUrl");
 
   if (!webhookUrl) {

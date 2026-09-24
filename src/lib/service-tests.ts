@@ -1,8 +1,9 @@
 import nodemailer from "nodemailer";
 import { getConfig } from "@/lib/config";
 import { isKomgaConfigured } from "@/lib/komga";
+import { getNtfyBaseUrl, sendGotify, sendNtfy } from "@/lib/push";
 
-export type TestableService = "komga" | "discord" | "smtp" | "comicvine" | "prowlarr";
+export type TestableService = "komga" | "discord" | "smtp" | "comicvine" | "prowlarr" | "push";
 export interface TestResult {
   ok: boolean;
   message: string;
@@ -110,7 +111,24 @@ async function testProwlarr(): Promise<TestResult> {
   }
 }
 
+async function testPush(): Promise<TestResult> {
+  const topic = getConfig("ntfyAdminTopic");
+  const gotify = Boolean(getConfig("gotifyUrl") && getConfig("gotifyToken"));
+  if (!topic && !gotify) {
+    return { ok: false, message: "Renseignez un sujet ntfy administrateur et/ou Gotify (URL + jeton d'application)." };
+  }
+
+  const push = { title: "ReadSeerr : test de notification", message: "Les notifications push fonctionnent. ✅", tags: ["tada"] };
+  const [ntfyOk, gotifyOk] = await Promise.all([topic ? sendNtfy(topic, push) : null, gotify ? sendGotify(push) : null]);
+  const parts = [
+    ntfyOk !== null && (ntfyOk ? `ntfy ✓ (${getNtfyBaseUrl()})` : "ntfy ✕ (serveur injoignable ou jeton refusé)"),
+    gotifyOk !== null && (gotifyOk ? "Gotify ✓" : "Gotify ✕ (URL ou jeton d'application refusé)"),
+  ].filter(Boolean);
+  return { ok: ntfyOk !== false && gotifyOk !== false, message: parts.join(" · ") };
+}
+
 const TESTS: Record<TestableService, () => Promise<TestResult>> = {
+  push: testPush,
   komga: testKomga,
   discord: testDiscord,
   smtp: testSmtp,

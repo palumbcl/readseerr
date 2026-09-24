@@ -1,4 +1,24 @@
 import { sendEmail } from "@/lib/email";
+import { pushUser } from "@/lib/push";
+
+/** Destinataire : email et, s'il en a défini un, sujet ntfy pour les notifications push. */
+type Recipient = { name: string; email: string | null; ntfyTopic?: string | null };
+
+/**
+ * Envoie la même information par email et en notification push.
+ * Renvoie true si l'email est parti (compteur « prévenus par email » des notifications admin).
+ */
+async function deliver(
+  user: Recipient,
+  mail: { subject: string; text: string; html: string },
+  push: { message: string; click?: string | null; tags?: string[] }
+): Promise<boolean> {
+  const [emailed] = await Promise.all([
+    user.email ? sendEmail({ to: user.email, ...mail }) : Promise.resolve(false),
+    pushUser(user.ntfyTopic, { title: mail.subject, ...push }),
+  ]);
+  return emailed;
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -30,12 +50,11 @@ export async function sendRequestStatusEmail({
   reason,
 }: {
   kind: StatusEmailKind;
-  user: { name: string; email: string | null };
+  user: Recipient;
   title: string;
   coverUrl?: string | null;
   reason?: string | null;
 }): Promise<boolean> {
-  if (!user.email) return false;
 
   const body: Record<StatusEmailKind, string> = {
     available: `Votre demande pour "${title}" est maintenant disponible sur votre librairie.\n\nBonne lecture !`,
@@ -53,7 +72,12 @@ export async function sendRequestStatusEmail({
     "<p>L'équipe ReadSeerr</p>",
   ].join("");
 
-  return sendEmail({ to: user.email, subject: SUBJECTS[kind], text, html });
+  const tags = { available: ["white_check_mark"], approved: ["thumbsup"], declined: ["x"] }[kind];
+  return deliver(
+    user,
+    { subject: SUBJECTS[kind], text, html },
+    { message: body[kind].replace(/\n\n/g, "\n"), click: link, tags }
+  );
 }
 
 /**
@@ -70,14 +94,13 @@ export async function sendFollowUpdateEmail({
   autoRequested = false,
 }: {
   kind: "library" | "release";
-  user: { name: string; email: string | null };
+  user: Recipient;
   title: string;
   coverUrl?: string | null;
   count: number;
   libraryUrl?: string | null;
   autoRequested?: boolean;
 }): Promise<boolean> {
-  if (!user.email) return false;
 
   const plural = count > 1;
   const subject =
@@ -109,7 +132,11 @@ export async function sendFollowUpdateEmail({
     "<p>L'équipe ReadSeerr</p>",
   ].join("");
 
-  return sendEmail({ to: user.email, subject, text, html });
+  return deliver(
+    user,
+    { subject, text, html },
+    { message: paragraphs.join("\n"), click: link, tags: [kind === "library" ? "books" : "new"] }
+  );
 }
 
 /** Prévient l'auteur d'un signalement : réponse de l'admin, résolution ou réouverture. */
@@ -121,12 +148,11 @@ export async function sendIssueUpdateEmail({
   message,
 }: {
   kind: "comment" | "resolved" | "reopened";
-  user: { name: string; email: string | null };
+  user: Recipient;
   title: string;
   issueId: string;
   message?: string | null;
 }): Promise<boolean> {
-  if (!user.email) return false;
 
   const subjects = {
     comment: `Réponse à votre signalement : ${title}`,
@@ -150,5 +176,9 @@ export async function sendIssueUpdateEmail({
     "<p>L'équipe ReadSeerr</p>",
   ].join("");
 
-  return sendEmail({ to: user.email, subject: subjects[kind], text, html });
+  return deliver(
+    user,
+    { subject: subjects[kind], text, html },
+    { message: paragraphs.join("\n"), click: link, tags: [kind === "resolved" ? "white_check_mark" : "speech_balloon"] }
+  );
 }

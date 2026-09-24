@@ -2364,3 +2364,34 @@ input {
     width: 100%;
   }
 }
+
+/* ---------- Mon compte ---------- */
+a.navbar-avatar {
+  text-decoration: none;
+  transition: box-shadow var(--transition-fast);
+}
+
+a.navbar-avatar:hover {
+  box-shadow: 0 0 0 2px var(--accent-primary-hover);
+}
+
+.account-steps {
+  margin: 0 0 18px 18px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+
+.account-steps a {
+  color: var(--accent-primary-hover);
+}
+
+.account-topic-row {
+  display: flex;
+  gap: 8px;
+}
+
+.account-topic-row .form-input {
+  flex: 1;
+  min-width: 0;
+}

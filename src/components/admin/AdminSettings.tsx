@@ -24,7 +24,7 @@ interface SectionDef {
   id: string;
   title: string;
   description: string;
-  test?: "komga" | "discord" | "smtp" | "comicvine" | "prowlarr";
+  test?: "komga" | "discord" | "smtp" | "comicvine" | "prowlarr" | "push";
   fields: FieldDef[];
 }
 
@@ -56,6 +56,20 @@ const SECTIONS: SectionDef[] = [
     description: "Notifications de l'administrateur : nouvelles demandes, signalements, disponibilités.",
     test: "discord",
     fields: [{ key: "discordWebhookUrl", label: "URL du webhook", placeholder: "https://discord.com/api/webhooks/…" }],
+  },
+  {
+    id: "push",
+    title: "Notifications push (ntfy / Gotify)",
+    description:
+      "Les alertes administrateur (demandes, signalements…) arrivent aussi sur votre téléphone. Les lecteurs choisissent leur propre sujet ntfy dans « Mon compte ».",
+    test: "push",
+    fields: [
+      { key: "ntfyUrl", label: "Serveur ntfy", placeholder: "https://ntfy.sh", help: "Vide : ntfy.sh. Aussi utilisé pour les notifications des lecteurs." },
+      { key: "ntfyAdminTopic", label: "Sujet ntfy administrateur", help: "Sujet difficile à deviner : sur un serveur public, il suffit de le connaître pour lire les messages." },
+      { key: "ntfyToken", label: "Jeton d'accès ntfy (facultatif)", help: "Pour un serveur ntfy protégé." },
+      { key: "gotifyUrl", label: "Serveur Gotify (facultatif)", placeholder: "https://gotify.exemple.fr" },
+      { key: "gotifyToken", label: "Jeton d'application Gotify", help: "Gotify > Apps > Créer une application." },
+    ],
   },
   {
     id: "smtp",

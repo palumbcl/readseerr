@@ -16,6 +16,11 @@ export const CONFIG_FIELDS = {
   komgaLoginEnabled: { env: "KOMGA_LOGIN_ENABLED", secret: false }, // "true" : connexion avec un compte Komga
   discordWebhookUrl: { env: "DISCORD_WEBHOOK_URL", secret: true },
   prowlarrUrl: { env: "PROWLARR_URL", secret: false },
+  ntfyUrl: { env: "NTFY_URL", secret: false }, // https://ntfy.sh par défaut
+  ntfyAdminTopic: { env: "NTFY_ADMIN_TOPIC", secret: true }, // un sujet ntfy public se devine : traité comme un secret
+  ntfyToken: { env: "NTFY_TOKEN", secret: true },
+  gotifyUrl: { env: "GOTIFY_URL", secret: false },
+  gotifyToken: { env: "GOTIFY_TOKEN", secret: true },
   smtpHost: { env: "SMTP_HOST", secret: false },
   smtpPort: { env: "SMTP_PORT", secret: false },
   smtpUser: { env: "SMTP_USER", secret: false },

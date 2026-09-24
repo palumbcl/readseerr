@@ -38,7 +38,9 @@ export default function Navbar() {
           )}
 
           <div className="navbar-user">
-            <div className="navbar-avatar">{userInitial}</div>
+            <Link href="/account" className="navbar-avatar" title="Mon compte et notifications">
+              {userInitial}
+            </Link>
             <button
               className="navbar-logout"
               onClick={() => signOut({ callbackUrl: "/login" })}
