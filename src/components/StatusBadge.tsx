@@ -11,18 +11,6 @@ const statusLabels: Record<string, string> = {
   available: "Disponible",
 };
 
-const statusIcons: Record<string, string> = {
-  pending: "◷",
-  approved: "→",
-  declined: "✕",
-  available: "●",
-};
-
 export default function StatusBadge({ status }: StatusBadgeProps) {
-  return (
-    <span className={`status-badge ${status}`}>
-      <span>{statusIcons[status] ?? "•"}</span>
-      {statusLabels[status] || status}
-    </span>
-  );
+  return <span className={`status-badge ${status}`}>{statusLabels[status] || status}</span>;
 }

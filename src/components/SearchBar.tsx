@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { MediaResult } from "@/lib/types";
 import CoverImage from "@/components/CoverImage";
+import { BookOpenIcon, SearchIcon } from "@/components/Icons";
 
 interface SearchBarProps {
   defaultQuery?: string;
@@ -13,9 +14,9 @@ interface SearchBarProps {
 const MEDIA_TYPES = ["manga", "comic"] as const;
 const SUGGESTIONS_PER_SOURCE = 6;
 
-const TYPE_LABELS: Record<string, { emoji: string; label: string }> = {
-  manga: { emoji: "🇯🇵", label: "Manga" },
-  comic: { emoji: "📘", label: "Comic / BD" },
+const TYPE_LABELS: Record<string, string> = {
+  manga: "Manga",
+  comic: "Comic",
 };
 
 export default function SearchBar({ defaultQuery = "", compact = false }: SearchBarProps) {
@@ -168,14 +169,12 @@ export default function SearchBar({ defaultQuery = "", compact = false }: Search
     <div className="search-container" ref={containerRef}>
       <form onSubmit={handleSearch}>
         <div className="search-input-wrapper">
-          <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
+          <SearchIcon className="search-icon" />
           <input
-            type="text"
+            type="search"
+            enterKeyHint="search"
             className="search-input"
-            placeholder={compact ? "Rechercher..." : "Rechercher un titre..."}
+            placeholder="Rechercher un titre"
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={() => {
@@ -199,7 +198,6 @@ export default function SearchBar({ defaultQuery = "", compact = false }: Search
       {showDropdown && (suggestions.length > 0 || loading) && (
         <div className="autocomplete-dropdown">
           {suggestions.map((item, index) => {
-            const typeInfo = TYPE_LABELS[item.type] || { emoji: "📚", label: item.type };
             return (
               <button
                 key={`${item.type}-${item.id}`}
@@ -212,7 +210,7 @@ export default function SearchBar({ defaultQuery = "", compact = false }: Search
                   {item.coverUrl ? (
                     <CoverImage src={item.coverUrl} alt="" width={36} height={50} />
                   ) : (
-                    <span className="autocomplete-item-no-cover">📚</span>
+                    <BookOpenIcon className="autocomplete-item-no-cover" size={18} />
                   )}
                 </div>
                 <div className="autocomplete-item-info">
@@ -220,7 +218,7 @@ export default function SearchBar({ defaultQuery = "", compact = false }: Search
                   {item.year && <span className="autocomplete-item-year">{item.year}</span>}
                 </div>
                 <span className={`autocomplete-item-badge ${item.type}`}>
-                  {typeInfo.emoji} {typeInfo.label}
+                  {TYPE_LABELS[item.type] ?? item.type}
                 </span>
               </button>
             );

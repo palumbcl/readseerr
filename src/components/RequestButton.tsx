@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import LoadingSpinner from "./LoadingSpinner";
 import VolumeSelector from "./VolumeSelector";
+import { BookOpenIcon, CheckIcon, ClockIcon, DownloadIcon, PencilIcon, XIcon } from "./Icons";
 import type { DetailAvailability, MediaDetail, QuotaStatus, RequestPayload } from "@/lib/types";
 
 interface RequestButtonProps {
@@ -136,42 +137,40 @@ export default function RequestButton({ media, state }: RequestButtonProps) {
   };
 
   const libraryLink = state?.library?.url && (
-    <a className="btn btn-secondary btn-lg" href={state.library.url} target="_blank" rel="noopener noreferrer">
-      Ouvrir dans Komga
+    <a className="btn btn-secondary" href={state.library.url} target="_blank" rel="noopener noreferrer">
+      <BookOpenIcon size={18} />
+      Lire sur Komga
     </a>
   );
 
   // Tout est déjà dans la bibliothèque : rien à demander
   if (isFullyAvailable && !requestId && status === "idle") {
     return (
-      <div className="request-followup-actions" style={{ marginTop: 0 }}>
-        <button className="btn btn-success btn-lg" disabled>
-          ● Disponible
+      <>
+        <button className="btn btn-success" disabled>
+          <CheckIcon size={18} strokeWidth={2.5} />
+          Disponible
         </button>
         {libraryLink}
-      </div>
+      </>
     );
   }
 
   const pendingOrApproved = requestStatus === "approved" ? "Demande acceptée" : "Demande envoyée";
 
+  // Le composant rend une suite de boutons et de messages : le parent (.media-actions) aligne
+  // les boutons sur une ligne et renvoie les messages (.action-note) en dessous
   return (
     <>
-      {status === "idle" && (
-        <div>
-          <div className="request-followup-actions" style={{ marginTop: 0 }}>
-            <button className="btn btn-primary btn-lg" onClick={handleClick} disabled={quotaReached}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              {isPartial ? "Demander les tomes manquants" : declined ? "Demander à nouveau" : "Demander"}
-            </button>
-            {isPartial && libraryLink}
-          </div>
+      {(status === "idle" || status === "selecting") && (
+        <>
+          <button className="btn btn-primary" onClick={handleClick} disabled={quotaReached}>
+            <DownloadIcon size={18} />
+            {isPartial ? "Demander les tomes manquants" : declined ? "Demander à nouveau" : "Demander"}
+          </button>
+          {isPartial && libraryLink}
           {quota && quota.limit !== null && (
-            <p className={`request-note ${quotaReached ? "over-quota" : ""}`}>
+            <p className={`action-note ${quotaReached ? "over-quota" : ""}`}>
               {quotaReached
                 ? `Quota atteint (${quota.limit} tomes tous les ${quota.days} jours)${
                     quota.resetsAt
@@ -182,55 +181,56 @@ export default function RequestButton({ media, state }: RequestButtonProps) {
             </p>
           )}
           {declined && (
-            <p className="request-note">
+            <p className="action-note">
               Votre précédente demande a été refusée
               {declined.declineReason ? <> : <strong>{declined.declineReason}</strong></> : "."}
             </p>
           )}
-        </div>
+        </>
       )}
 
       {status === "loading" && (
-        <button className="btn btn-primary btn-lg" disabled>
+        <button className="btn btn-primary" disabled>
           <LoadingSpinner />
-          Envoi en cours...
+          Envoi en cours…
         </button>
       )}
 
-      {status === "success" && (
-        <div>
-          <button className="btn btn-success btn-lg" disabled>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+      {(status === "success" || status === "editing") && (
+        <>
+          <button className={`btn ${requestStatus === "approved" ? "btn-indigo-muted" : "btn-warning-muted"}`} disabled>
+            {requestStatus === "approved" ? <CheckIcon size={18} strokeWidth={2.5} /> : <ClockIcon size={18} />}
             {pendingOrApproved}
           </button>
-          {requestStatus === "approved" && (
-            <p className="request-note">L&apos;administrateur l&apos;a acceptée : elle sera bientôt ajoutée à la bibliothèque.</p>
-          )}
           {requestId && requestStatus === "pending" && (
-            <div className="request-followup-actions">
+            <>
               {media.volumes.length > 1 && (
-                <button className="btn btn-secondary btn-sm" onClick={() => setStatus("editing")}>
-                  Modifier les tomes
+                <button className="btn btn-secondary" onClick={() => setStatus("editing")}>
+                  <PencilIcon size={18} />
+                  Modifier
                 </button>
               )}
-              <button className="btn btn-secondary btn-sm" onClick={cancelRequest}>
-                Annuler la demande
+              <button className="btn btn-secondary btn-danger-hover" onClick={cancelRequest}>
+                <XIcon size={18} />
+                Annuler
               </button>
-            </div>
+            </>
           )}
-          {actionError && <p className="form-error" style={{ marginTop: 8 }}>{actionError}</p>}
-        </div>
+          {requestStatus === "approved" && (
+            <p className="action-note">L&apos;administrateur l&apos;a acceptée : elle sera bientôt ajoutée à la bibliothèque.</p>
+          )}
+          {actionError && <p className="action-note form-error">{actionError}</p>}
+        </>
       )}
 
       {status === "error" && (
-        <div>
-          <button className="btn btn-error btn-lg" onClick={() => setStatus("idle")}>
-            ✕ Erreur — Réessayer
+        <>
+          <button className="btn btn-danger" onClick={() => setStatus("idle")}>
+            <XIcon size={18} />
+            Erreur — Réessayer
           </button>
-          {errorMsg && <p className="form-error" style={{ marginTop: 8 }}>{errorMsg}</p>}
-        </div>
+          {errorMsg && <p className="action-note form-error">{errorMsg}</p>}
+        </>
       )}
 
       {status === "selecting" && (

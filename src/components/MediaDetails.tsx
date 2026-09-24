@@ -7,6 +7,7 @@ import RequestButton from "./RequestButton";
 import FollowButton from "./FollowButton";
 import ReportIssueButton from "./ReportIssueButton";
 import CoverImage from "@/components/CoverImage";
+import { BookOpenIcon, ChevronLeftIcon, TagIcon } from "@/components/Icons";
 
 interface MediaDetailsProps {
   detail: MediaDetail;
@@ -16,6 +17,8 @@ interface MediaDetailsProps {
 export default function MediaDetails({ detail, state }: MediaDetailsProps) {
   const router = useRouter();
   const bgImage = detail.bannerUrl || detail.coverUrl;
+  const unit = detail.type === "comic" ? "numéro" : "tome";
+  const volumeCount = detail.volumes.length || detail.volumeCount || 0;
 
   // Go back to the previous page (search results); fall back to home when the
   // details page was opened directly (new tab, shared link)
@@ -37,136 +40,171 @@ export default function MediaDetails({ detail, state }: MediaDetailsProps) {
         ? `${detail.year} – en cours`
         : String(detail.year);
 
+  const attributes = [
+    volumeCount > 0 && `${volumeCount} ${unit}${volumeCount > 1 ? "s" : ""}`,
+    detail.genres.length > 0 && detail.genres.slice(0, 4).join(", "),
+  ].filter(Boolean);
+
+  const people = [
+    detail.author && { job: "Auteur", name: detail.author },
+    detail.publisher && { job: "Éditeur", name: detail.publisher },
+  ].filter(Boolean) as { job: string; name: string }[];
+
+  const altTitles = (detail.altTitles ?? []).filter((t) => t && t !== detail.title).slice(0, 3);
+
   return (
-    <div className="details-hero">
+    <div className="media-page">
       {bgImage && (
-        <>
-          <div className="details-hero-bg" style={{ backgroundImage: `url(${bgImage})` }} />
-          <div className="details-hero-overlay" />
-        </>
+        <div className="media-page-bg" aria-hidden>
+          <div className="media-page-bg-image" style={{ backgroundImage: `url(${bgImage})` }} />
+          <div className="media-page-bg-gradient" />
+        </div>
       )}
 
-      <div className="details-back-bar">
-        <button type="button" className="details-back" onClick={handleBack}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          Retour
-        </button>
-      </div>
+      <button type="button" className="media-back" onClick={handleBack} aria-label="Retour">
+        <ChevronLeftIcon size={22} />
+      </button>
 
-      <div className="details-content">
-        {/* Cover */}
-        <div className="details-cover">
+      <div className="media-header">
+        <div className="media-poster">
           {detail.coverUrl ? (
-            <CoverImage src={detail.coverUrl} alt={detail.title} fill sizes="250px" priority />
+            <CoverImage src={detail.coverUrl} alt={detail.title} fill sizes="(max-width: 768px) 128px, 208px" priority />
           ) : (
-            <div className="media-card-no-image" style={{ fontSize: "4rem" }}>📚</div>
+            <div className="media-card-no-image">
+              <BookOpenIcon size={48} />
+            </div>
           )}
         </div>
 
-        {/* Info */}
-        <div className="details-info">
-          <h1 className="details-title">{detail.title}</h1>
-
-          {/* Meta pills */}
-          <div className="details-meta">
-            <span className={`media-card-badge ${detail.type}`} style={{ position: "static" }}>
-              {detail.type === "manga" ? "🇯🇵 Manga" : "📘 Comic / BD"}
-            </span>
-
-            {yearLabel && (
-              <div className="details-meta-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                {yearLabel}
-              </div>
-            )}
-
-            {detail.author && (
-              <div className="details-meta-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                {detail.author}
-              </div>
-            )}
-
-            {detail.publisher && (
-              <div className="details-meta-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                {detail.publisher}
-              </div>
-            )}
-
-            {detail.status && (
-              <div className="details-meta-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                {detail.status}
-              </div>
-            )}
-
-            {detail.volumes.length > 0 && (
-              <div className="details-meta-item">
-                📖 {detail.volumes.length} tome{detail.volumes.length > 1 ? "s" : ""}
-              </div>
-            )}
-
-            {detail.chapters && (
-              <div className="details-meta-item">
-                📄 {detail.chapters} chapitre{detail.chapters > 1 ? "s" : ""}
-              </div>
+        <div className="media-title">
+          <div className="media-status">
+            <span className={`type-badge ${detail.type}`}>{detail.type === "manga" ? "Manga" : "Comic"}</span>
+            {state?.availability && (
+              <AvailabilityBadge availability={state.availability} volumeCount={volumeCount} inline />
             )}
           </div>
+          <h1>
+            {detail.title}
+            {yearLabel && <span className="media-year"> ({yearLabel})</span>}
+          </h1>
+          {attributes.length > 0 && (
+            <span className="media-attributes">
+              {attributes.map((attr, i) => (
+                <span key={i}>
+                  {i > 0 && <span className="media-attributes-sep">|</span>}
+                  {attr}
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
 
-          {/* Genres */}
+        {/* Les boutons des trois composants se rangent sur une ligne, leurs messages en dessous */}
+        <div className="media-actions">
+          <RequestButton media={detail} state={state} />
+          {state && <FollowButton media={detail} initialFollow={state.follow} />}
+          {/* Signalement : seulement pour ce qui est dans la bibliothèque */}
+          {state?.library && <ReportIssueButton media={detail} libraryVolumes={state.library.volumes} />}
+        </div>
+      </div>
+
+      <div className="media-overview">
+        <div className="media-overview-left">
+          <h2>Résumé</h2>
+          <p className="media-overview-text">{detail.description || "Aucun résumé disponible."}</p>
+
+          {people.length > 0 && (
+            <ul className="media-crew">
+              {people.map((person) => (
+                <li key={person.job}>
+                  <span className="media-crew-job">{person.job}</span>
+                  <span className="media-crew-name">{person.name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
           {detail.genres.length > 0 && (
-            <div className="details-genres">
+            <div className="media-tags">
               {detail.genres.map((genre) => (
-                <span key={genre} className="details-genre">{genre}</span>
+                <span key={genre} className="media-tag">
+                  <TagIcon size={16} />
+                  {genre}
+                </span>
               ))}
             </div>
           )}
+        </div>
 
-          {/* Description */}
-          {detail.description && (
-            <p className="details-description">{detail.description}</p>
-          )}
-
-          {/* Bibliothèque et demandes des autres lecteurs */}
-          {state && (state.availability || state.otherRequests > 0) && (
-            <div className="details-library">
-              {state.availability && (
-                <AvailabilityBadge
-                  availability={state.availability}
-                  volumeCount={detail.volumes.length || detail.volumeCount}
-                  inline
-                />
-              )}
-              {state.library && (
-                <span>
-                  {state.library.booksCount} tome{state.library.booksCount > 1 ? "s" : ""} dans{" "}
+        <div className="media-overview-right">
+          <div className="media-facts">
+            {altTitles.length > 0 && (
+              <div className="media-fact">
+                <span>Autres titres</span>
+                <span className="media-fact-value">
+                  {altTitles.map((t) => (
+                    <span key={t}>{t}</span>
+                  ))}
+                </span>
+              </div>
+            )}
+            {detail.status && (
+              <div className="media-fact">
+                <span>Statut</span>
+                <span className="media-fact-value">{detail.status}</span>
+              </div>
+            )}
+            {yearLabel && (
+              <div className="media-fact">
+                <span>Publication</span>
+                <span className="media-fact-value">{yearLabel}</span>
+              </div>
+            )}
+            {volumeCount > 0 && (
+              <div className="media-fact">
+                <span>{detail.type === "comic" ? "Numéros" : "Tomes"}</span>
+                <span className="media-fact-value">{volumeCount}</span>
+              </div>
+            )}
+            {detail.chapters && (
+              <div className="media-fact">
+                <span>Chapitres</span>
+                <span className="media-fact-value">{detail.chapters}</span>
+              </div>
+            )}
+            {detail.publisher && (
+              <div className="media-fact">
+                <span>Éditeur</span>
+                <span className="media-fact-value">{detail.publisher}</span>
+              </div>
+            )}
+            {state?.library && (
+              <div className="media-fact">
+                <span>Bibliothèque</span>
+                <span className="media-fact-value">
+                  <span>
+                    {state.library.booksCount} {unit}
+                    {state.library.booksCount > 1 ? "s" : ""}
+                  </span>
                   {state.library.url ? (
                     <a href={state.library.url} target="_blank" rel="noopener noreferrer">
                       {state.library.name}
                     </a>
                   ) : (
-                    state.library.name
+                    <span>{state.library.name}</span>
                   )}
                 </span>
-              )}
-              {state.otherRequests > 0 && (
-                <span>
-                  · Déjà demandé par {state.otherRequests} autre{state.otherRequests > 1 ? "s" : ""} lecteur
-                  {state.otherRequests > 1 ? "s" : ""}
+              </div>
+            )}
+            {state && state.otherRequests > 0 && (
+              <div className="media-fact">
+                <span>Autres demandes</span>
+                <span className="media-fact-value">
+                  {state.otherRequests} lecteur{state.otherRequests > 1 ? "s" : ""}
                 </span>
-              )}
-            </div>
-          )}
-
-          {/* Request Button */}
-          <RequestButton media={detail} state={state} />
-
-          {/* Suivi de la série (nouveaux tomes / numéros) */}
-          {state && <FollowButton media={detail} initialFollow={state.follow} />}
-
-          {/* Signalement : seulement pour ce qui est dans la bibliothèque */}
-          {state?.library && <ReportIssueButton media={detail} libraryVolumes={state.library.volumes} />}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

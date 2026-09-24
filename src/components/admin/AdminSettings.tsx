@@ -145,7 +145,7 @@ function WebhookUrlHint() {
       <div className="settings-webhook-url">
         <code>{url}</code>
         <button type="button" className="btn-link" onClick={copy}>
-          {copied ? "Copié ✓" : "Copier"}
+          {copied ? "Copié" : "Copier"}
         </button>
       </div>
     </div>
@@ -289,7 +289,7 @@ function SettingsSection({
         )}
         {dirty && <span className="settings-help">Enregistrez avant de tester.</span>}
       </div>
-      {result && <p className={`settings-result ${result.ok ? "ok" : "ko"}`}>{result.ok ? "✓" : "✕"} {result.message}</p>}
+      {result && <p className={`settings-result ${result.ok ? "ok" : "ko"}`}>{result.message}</p>}
     </section>
   );
 }
